@@ -1,6 +1,7 @@
 import * as T from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { makeLamp } from "./lamp";
+import { placeLamp, planLampClearance } from "./lamp-clearance";
 import { makeText } from "./text";
 import { makeLogo } from "./logo";
 import { evaluate } from "./timeline.mjs";
@@ -114,6 +115,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
   let contents: T.Group,
     config: Config,
     lamp: ReturnType<typeof makeLamp>,
+    clearance: ReturnType<typeof planLampClearance> | undefined,
     word: ReturnType<typeof makeText> | ReturnType<typeof makeLogo>,
     blob: ReturnType<typeof shadow>,
     span = 1,
@@ -160,6 +162,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
       ? makeLogo(cfg.logo, cfg.target)
       : makeText(cfg.name, cfg.target, cfg.text);
     lamp = makeLamp(cfg.lamp);
+    clearance = undefined;
     lamp.root.scale.setScalar(word.lampScale);
     contents.add(word.group, lamp.root);
     word.group.updateMatrixWorld(true);
@@ -211,35 +214,38 @@ export function studioScene(canvas: HTMLCanvasElement) {
         parts.push(o);
       }
     });
-    for (
-      let i = Math.ceil((93 / 24) * cfg.fps);
-      i <= cfg.duration * cfg.fps;
-      i++
-    ) {
-      pose(i / cfg.fps);
-      lamp.root.updateMatrixWorld(true);
-      for (const part of parts) {
-        const b = part.geometry.boundingBox!;
-        matrix.multiplyMatrices(camera.matrixWorldInverse, part.matrixWorld);
-        for (const x of [b.min.x, b.max.x])
-          for (const y of [b.min.y, b.max.y])
-            for (const z of [b.min.z, b.max.z]) {
-              projected.set(x, y, z).applyMatrix4(matrix);
-              span = Math.max(
-                span,
-                (Math.abs(projected.x) * 2.12) / ratio,
-                projected.y /
-                  (0.633 - bars.material.uniforms.matte.value - 0.013),
-              );
-            }
+    const sample = (progress: number) => evaluate(progress * cfg.duration, cfg.duration, staging, cfg.ending);
+    const fitLamp = () => {
+      for (let i = Math.ceil((93 / 24) * cfg.fps); i <= cfg.duration * cfg.fps; i++) {
+        const progress = i / (cfg.duration * cfg.fps);
+        placeLamp(lamp, sample(progress), progress, clearance);
+        lamp.root.updateMatrixWorld(true);
+        for (const part of parts) {
+          const b = part.geometry.boundingBox!;
+          matrix.multiplyMatrices(camera.matrixWorldInverse, part.matrixWorld);
+          for (const x of [b.min.x, b.max.x])
+            for (const y of [b.min.y, b.max.y])
+              for (const z of [b.min.z, b.max.z]) {
+                projected.set(x, y, z).applyMatrix4(matrix);
+                span = Math.max(
+                  span,
+                  (Math.abs(projected.x) * 2.12) / ratio,
+                  projected.y / (0.633 - bars.material.uniforms.matte.value - 0.013),
+                );
+              }
+        }
       }
-    }
+    };
+    fitLamp();
     staging.start =
       (cx +
         span * ratio * 0.5 +
         0.75 * word.lampScale -
         word.approachX * 0.22) /
       0.78;
+    clearance = planLampClearance(lamp, word, camera.matrixWorldInverse, sample,
+      cfg.duration * cfg.fps * 2, word.lampScale, cfg.ending === "restore");
+    if (clearance.tuck.length) fitLamp();
     const cy = span * 0.135;
     camera.position.set(cx + cameraOffset, cy + 2.35, 20);
     camera.lookAt(cx, cy, 0.08);
@@ -266,11 +272,11 @@ export function studioScene(canvas: HTMLCanvasElement) {
       );
     word.selected.scale.y = p.squash;
     word.selected.visible = p.squash > 0.002;
-    lamp.root.position.set(p.x, p.y, p.z);
-    lamp.pose(p.fold, p.look, p.yaw, p.neck, p.tilt);
-    blob.position.set(p.x, 0.005, p.z);
-    blob.scale.set(1.03 + p.y * 0.5, 1.06 + p.y * 0.5, 1);
-    blob.material.opacity = 0.91 / (1 + p.y * 2.6);
+    placeLamp(lamp, p, T.MathUtils.clamp(t / config.duration, 0, 1), clearance);
+    const { x, y, z } = lamp.root.position;
+    blob.position.set(x, 0.005, z);
+    blob.scale.set(1.03 + y * 0.5, 1.06 + y * 0.5, 1);
+    blob.material.opacity = 0.91 / (1 + y * 2.6);
     lamp.shade.getWorldPosition(socket);
     lamp.shade.getWorldQuaternion(orientation);
     axis.set(0, -1, 0).applyQuaternion(orientation);
@@ -282,7 +288,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
     );
     pool.rotation.y = Math.atan2(axis.x, axis.z);
     pool.scale.set(1.55 + reach * 0.92, 1.75 + reach * 1.13, 1);
-    pool.material.uniforms.strength.value = 0.6 / (1 + p.y * 0.65);
+    pool.material.uniforms.strength.value = 0.6 / (1 + y * 0.65);
   }
   function draw(t: number) {
     pose(t);
@@ -298,6 +304,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
   }
   return {
     configure,
+    clearance: () => clearance && { before: clearance.originalScore, after: clearance.score, scale: clearance.scale },
     pickLogoPart(x: number, y: number) {
       if (!config.logo) return -1;
       const ray = new T.Raycaster();
