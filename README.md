@@ -4,7 +4,7 @@ Make a **13-second 3D title film** from a name or logo. A spring-arm desk lamp h
 
 [Quick start](#quick-start) · [Make a film](#make-a-film) · [Sample films](#sample-films) · [Render pipeline](#render-pipeline)
 
-![Lamp Name Studio editor paused on the first strike, with the lamp landing on the M in SAMUEL. The timeline and scene settings are visible.](samples/studio.jpg)
+![Animated SAMUEL excerpt showing the desk lamp hop onto the M, flatten it, and turn its shade toward the viewer.](samples/samuel.gif)
 
 [Watch the name film · SAMUEL](samples/landscape.mp4) · [Watch the logo film · NOVA](samples/logos/nova-matched.mp4)
 
@@ -48,6 +48,8 @@ Logo mode samples the artwork at up to 512 pixels on its longest side and extrud
 | Fold | [Transparent PNG](examples/logos/Fold.png) | [MP4](samples/logos/fold-standard.mp4) | [MP4](samples/logos/fold-matched.mp4) |
 
 ### Preview and export
+
+![Lamp Name Studio editor paused on the first strike, with the lamp landing on the M in SAMUEL. The timeline and scene settings are visible.](samples/studio.jpg)
 
 Press **Play**, drag the scrubber, or click one of the seven timeline beats. The editor opens on a paused staging pose, and the first Play starts at the opening fade. **Mute preview** only affects monitoring. Choose a format and set the scene colors, then select **Export MP4** and download the finished film from the **Render queue**.
 
