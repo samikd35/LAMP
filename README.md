@@ -34,6 +34,8 @@ Names support **1–24 grapheme clusters** with at least one Latin letter from t
 
 ### Start with a logo
 
+![Looping preview of the desk lamp flattening the yellow o in the Google logo before hopping away and restoring the wordmark.](samples/logos/google.gif)
+
 1. Select **Logo** and upload a PNG, JPEG, or outlined SVG up to **2 MB**. The studio can remove a solid background automatically. Leave some plain space around the logo and use artwork that contrasts with it. For photos, gradients, or colors that blend into the background, use a transparent PNG instead. PNGs and JPEGs can be up to **4096 × 4096**. Give SVGs a `viewBox` and convert text and strokes to solid filled shapes.
 2. Click a visible part of the logo in the preview or choose it from **Landing part**. Separate pieces stand on the floor and are staged left to right with Name-style spacing. The studio can also separate touching letters with a clear color boundary. A fused, same-color outline stays one part; use artwork with visible gaps if you need each letter to move independently.
 3. Try **Match colors to logo** to suggest a lamp paint and backdrop from the artwork's main colors. The logo keeps its own face colors, and the two swatches stay editable.
