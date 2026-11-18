@@ -1,0 +1,54 @@
+[
+  {
+    "id": "266d7085-5618-471e-84e9-f1b76418ff02",
+    "key": "nova",
+    "label": "NOVA · outlined SVG",
+    "variant": "standard",
+    "lamp": "#ded7c9",
+    "background": "#94a9cf",
+    "part": 1,
+    "contrast": {
+      "#00635e": 3.03,
+      "#fa875e": 1.02
+    }
+  },
+  {
+    "id": "495cec43-b2d8-4b92-84e8-e523bd3fe5a9",
+    "key": "nova",
+    "label": "NOVA · outlined SVG",
+    "variant": "matched",
+    "lamp": "#955e50",
+    "background": "#f6f8f3",
+    "part": 1,
+    "contrast": {
+      "#00635e": 6.69,
+      "#fa875e": 2.25
+    }
+  },
+  {
+    "id": "a615aa7e-fe14-4300-86aa-59be3ebee844",
+    "key": "fold",
+    "label": "Fold · transparent PNG",
+    "variant": "standard",
+    "lamp": "#ded7c9",
+    "background": "#94a9cf",
+    "part": 0,
+    "contrast": {
+      "#fff4da": 2.17,
+      "#e4a94a": 1.14
+    }
+  },
+  {
+    "id": "4c524120-7484-484f-aeb5-142b17055ee1",
+    "key": "fold",
+    "label": "Fold · transparent PNG",
+    "variant": "matched",
+    "lamp": "#ead5b0",
+    "background": "#353538",
+    "part": 0,
+    "contrast": {
+      "#fff4da": 11.34,
+      "#e4a94a": 5.96
+    }
+  }
+]

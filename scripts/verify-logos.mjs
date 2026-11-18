@@ -1,0 +1,312 @@
+import assert from "node:assert/strict";
+import { spawn, execFileSync } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { setTimeout as sleep } from "node:timers/promises";
+import { openBrowser } from "../server/worker.mjs";
+const port = process.env.LOGO_TEST_PORT ?? "4181",
+  origin = `http://127.0.0.1:${port}`,
+  out = "samples/logos";
+await mkdir(out, { recursive: true });
+const service = spawn(process.execPath, ["server/studio.mjs"], {
+  env: { ...process.env, PORT: port },
+  stdio: ["ignore", "pipe", "inherit"],
+});
+let browser;
+const ff = (...args) =>
+  execFileSync("ffmpeg", ["-v", "error", ...args], { maxBuffer: 32e6 });
+try {
+  await new Promise((resolve, reject) => {
+    service.stdout.once("data", resolve);
+    service.once("exit", () =>
+      reject(Error("Test service exited before startup")),
+    );
+  });
+  browser = await openBrowser();
+  const p = await browser.newPage({ viewport: { width: 1440, height: 960 } }),
+    errors = [];
+  p.on("pageerror", (e) => errors.push(e.message));
+  const png = await p.evaluate(
+    async (svg) => {
+      const i = new Image();
+      i.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      await i.decode();
+      const c = document.createElement("canvas");
+      c.width = 480;
+      c.height = 384;
+      c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
+      return c.toDataURL().split(",")[1];
+    },
+    await readFile("examples/logos/Fold-source.svg", "utf8"),
+  );
+  await writeFile("examples/logos/Fold.png", Buffer.from(png, "base64"));
+  await p.goto(origin);
+  await p.waitForSelector("#loading[hidden]", { state: "attached" });
+  const seek = async (t) =>
+    p.locator("#scrub").evaluate((el, t) => {
+      el.value = t;
+      el.dispatchEvent(new Event("input"));
+      return document.querySelector("canvas").toDataURL();
+    }, t);
+  const setColor = (id, v) =>
+    p.locator(id).evaluate((e, v) => {
+      e.value = v;
+      e.dispatchEvent(new Event("change"));
+    }, v);
+  await p.fill("#name", "Zoë");
+  await p.click('[data-letter="2"]');
+  await setColor("#lamp", "#947aca");
+  await p.click('[data-format="square"]');
+  const before = await seek(6.12);
+  await p.check('[value="logo"][name="mode"]');
+  assert.ok(await p.locator("#export").isDisabled());
+  await p
+    .locator("#upload")
+    .setInputFiles({
+      name: "invalid.svg",
+      mimeType: "image/svg+xml",
+      buffer: Buffer.from(
+        '<svg xmlns="http://www.w3.org/2000/svg"><text>Not outlined</text></svg>',
+      ),
+    });
+  await p.waitForFunction(() =>
+    document.querySelector("#logoMsg").textContent.includes("outlines"),
+  );
+  const films = [];
+  for (const [key, file, label, part, n] of [
+    ["nova", "NOVA.svg", "NOVA · outlined SVG", 1, 4],
+    ["fold", "Fold.png", "Fold · transparent PNG", 0, 1],
+  ]) {
+    await p.locator("#upload").setInputFiles("examples/logos/" + file);
+    await p.waitForFunction(
+      (file) => document.querySelector("#logoMsg").textContent.startsWith(file),
+      file,
+    );
+    assert.equal(await p.locator("#part option").count(), n);
+    await p.selectOption("#part", String(part));
+    await p.click("#reset");
+    if (key === "nova") {
+      await p.selectOption("#part", "0");
+      const image = await seek(1.04);
+      const points = await p.evaluate(async (src) => {
+        const i = new Image();
+        i.src = src;
+        await i.decode();
+        const c = document.createElement("canvas");
+        c.width = i.width;
+        c.height = i.height;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(i, 0, 0);
+        const d = ctx.getImageData(0, 0, c.width, c.height).data,
+          hits = [];
+        for (let j = 0; j < d.length; j += 4)
+          if (d[j] > 235 && d[j + 1] > 120 && d[j + 1] < 150 && d[j + 2] < 115)
+            hits.push([(j / 4) % c.width, Math.floor(j / 4 / c.width)]);
+        const xs = hits.map((v) => v[0]),
+          ys = hits.map((v) => v[1]),
+          x = (Math.min(...xs) + Math.max(...xs)) / 2,
+          y = (Math.min(...ys) + Math.max(...ys)) / 2;
+        return [
+          [x, y],
+          [(x + Math.min(...xs) * 3) / 4, y],
+        ].map(([x, y]) => [x / c.width, y / c.height]);
+      }, image);
+      const box = await p.locator("canvas").boundingBox();
+      for (const [i, [u, v]] of points.entries()) {
+        await p.mouse.click(box.x + u * box.width, box.y + v * box.height);
+        assert.equal(
+          await p.inputValue("#part"),
+          String(i),
+          "Hole should miss; O stroke should select part 2",
+        );
+      }
+    }
+    for (const variant of ["standard", "matched"]) {
+      if (variant === "matched") await p.click("#match");
+      const lamp = await p.inputValue("#lamp"),
+        background = await p.inputValue("#background");
+      const response = p.waitForResponse(
+        (r) =>
+          r.request().method() === "POST" && r.url() === origin + "/api/jobs",
+      );
+      await p.click("#export");
+      const { ids, errors } = await (await response).json();
+      assert.equal(errors.length, 0);
+      assert.equal(ids.length, 1);
+      films.push({ id: ids[0], key, label, variant, lamp, background, part });
+      await p.click("#back");
+    }
+  }
+  await p.check('[value="name"][name="mode"]');
+  assert.equal(await p.inputValue("#name"), "Zoë");
+  assert.equal(await p.inputValue("#lamp"), "#947aca");
+  assert.equal(
+    await p.getAttribute('[data-letter="2"]', "aria-pressed"),
+    "true",
+  );
+  assert.equal(
+    await p.getAttribute('[data-format="square"]', "aria-pressed"),
+    "true",
+  );
+  assert.equal(await seek(6.12), before);
+  const stills = [];
+  for (const f of films) {
+    let job;
+    const until = Date.now() + 300000;
+    do {
+      job = (await (await fetch(origin + "/api/jobs")).json()).find(
+        (j) => j.id === f.id,
+      );
+      if (job.status === "failed") throw Error(job.error);
+      if (job.status !== "complete") await sleep(500);
+    } while (job.status !== "complete" && Date.now() < until);
+    assert.equal(job.status, "complete");
+    assert.equal(job.config.target, f.part);
+    assert.equal(job.config.lamp, f.lamp);
+    assert.equal(job.config.background, f.background);
+    const path = `${out}/${f.key}-${f.variant}.mp4`,
+      r = await fetch(origin + "/api/download/" + f.id);
+    assert.ok(r.ok);
+    await writeFile(path, Buffer.from(await r.arrayBuffer()));
+    const info = JSON.parse(
+        execFileSync("ffprobe", [
+          "-v",
+          "error",
+          "-count_frames",
+          "-show_streams",
+          "-of",
+          "json",
+          path,
+        ]),
+      ),
+      [v, a] = info.streams;
+    assert.deepEqual(
+      [
+        v.width,
+        v.height,
+        v.codec_name,
+        v.pix_fmt,
+        v.nb_read_frames,
+        v.duration,
+        a.codec_name,
+        a.channels,
+      ],
+      [1920, 1080, "h264", "yuv420p", "390", "13.000000", "aac", 2],
+    );
+    const pixels = ff(
+      "-i",
+      path,
+      "-vf",
+      "select='eq(n,345)',scale=960:540",
+      "-frames:v",
+      "1",
+      "-pix_fmt",
+      "rgb24",
+      "-f",
+      "rawvideo",
+      "pipe:1",
+    );
+    const luma = (i) =>
+      [0.2126, 0.7152, 0.0722].reduce((l, k, c) => {
+        const n = pixels[i + c] / 255;
+        return (
+          l + k * (n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4)
+        );
+      }, 0);
+    f.contrast = {};
+    for (const fill of f.key === "nova"
+      ? ["00635e", "fa875e"]
+      : ["fff4da", "e4a94a"]) {
+      const color = [0, 2, 4].map((i) => parseInt(fill.slice(i, i + 2), 16)),
+        ratios = [];
+      let x0 = 960,
+        x1 = 0,
+        y0 = 540,
+        y1 = 0;
+      for (let y = 220; y < 365; y++)
+        for (let x = 90; x < 720; x++) {
+          const i = (y * 960 + x) * 3;
+          if (color.every((v, c) => Math.abs(pixels[i + c] - v) < 13)) {
+            const a = luma(i),
+              b = luma((y * 960 + 30) * 3);
+            ratios.push((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05));
+            x0 = Math.min(x0, x);
+            x1 = Math.max(x1, x);
+            y0 = Math.min(y0, y);
+            y1 = Math.max(y1, y);
+          }
+        }
+      assert.ok(ratios.length > 100, `Missing rendered brand fill ${fill}`);
+      f.contrast["#" + fill] = +ratios
+        .sort((a, b) => a - b)
+        [ratios.length >> 1].toFixed(2);
+      if (fill === "fa875e") {
+        const center =
+          (Math.round((y0 + y1) / 2) * 960 + Math.round((x0 + x1) / 2)) * 3;
+        assert.ok(
+          color.some((v, c) => Math.abs(v - pixels[center + c]) > 30),
+          "The O counter filled in",
+        );
+      }
+    }
+    for (const frame of [162, 183, 345])
+      stills.push(
+        ff(
+          "-i",
+          path,
+          "-vf",
+          `select='eq(n,${frame})',scale=420:-2`,
+          "-frames:v",
+          "1",
+          "-c:v",
+          "png",
+          "-f",
+          "image2pipe",
+          "pipe:1",
+        ).toString("base64"),
+      );
+  }
+  const sheet = await p.evaluate(
+    async ({ stills, films }) => {
+      const c = document.createElement("canvas");
+      c.width = 1260;
+      c.height = 40 + 4 * 274;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#191c1b";
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.font = "17px sans-serif";
+      ctx.fillStyle = "#edece3";
+      [
+        "Anticipation · 5.40 s",
+        "First landing · 6.10 s",
+        "Restored artwork · 11.50 s",
+      ].forEach((s, i) => ctx.fillText(s, 12 + i * 420, 26));
+      for (let i = 0; i < stills.length; i++) {
+        const row = Math.floor(i / 3),
+          f = films[row],
+          y = 40 + row * 274,
+          img = new Image();
+        img.src = "data:image/png;base64," + stills[i];
+        await img.decode();
+        ctx.drawImage(img, 420 * (i % 3), y + 30, 420, 236);
+        ctx.fillStyle = "#edbc79";
+        ctx.fillText(
+          `${f.label}   /   ${f.variant}   /   backdrop ${f.background}   /   lamp ${f.lamp}`,
+          12,
+          y + 20,
+        );
+      }
+      return c.toDataURL("image/jpeg", 0.95).split(",")[1];
+    },
+    { stills, films },
+  );
+  await writeFile(out + "/comparison.jpg", Buffer.from(sheet, "base64"));
+  await writeFile(out + "/results.json", JSON.stringify(films, null, 2) + "\n");
+  assert.deepEqual(errors, []);
+  console.log(
+    "Verified four 390-frame exports, material snapshots, invalid SVG rejection, Name settings and identical Name pose after switching.",
+    films,
+  );
+} finally {
+  await browser?.close();
+  service.kill("SIGTERM");
+}

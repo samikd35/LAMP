@@ -1,0 +1,53 @@
+[
+  {
+    "file": "samples/landscape.mp4",
+    "config": {
+      "name": "SAMUEL",
+      "aspect": "landscape",
+      "lamp": "#ded7c9",
+      "text": "#0a0a0c",
+      "background": "#94a9cf",
+      "ending": "replace",
+      "duration": 13,
+      "fps": 30,
+      "seed": 0,
+      "target": 2
+    },
+    "bytes": 1099258,
+    "frames": 390
+  },
+  {
+    "file": "samples/square.mp4",
+    "config": {
+      "name": "Zoë",
+      "aspect": "square",
+      "lamp": "#c2bba7",
+      "text": "#0a0a0c",
+      "background": "#94a9cf",
+      "ending": "restore",
+      "duration": 13,
+      "fps": 30,
+      "seed": 0,
+      "target": 1
+    },
+    "bytes": 1173110,
+    "frames": 390
+  },
+  {
+    "file": "samples/portrait.mp4",
+    "config": {
+      "name": "José",
+      "aspect": "portrait",
+      "lamp": "#ded7c9",
+      "text": "#0a0a0c",
+      "background": "#94a9cf",
+      "ending": "replace",
+      "duration": 13,
+      "fps": 30,
+      "seed": 0,
+      "target": 1
+    },
+    "bytes": 995943,
+    "frames": 390
+  }
+]

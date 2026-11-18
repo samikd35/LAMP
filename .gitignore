@@ -1,0 +1,18 @@
+# Dependencies, build output, and local renders
+/node_modules/
+/dist/
+/outputs/
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Third-party reference footage and local comparison media
+/references/PIXAR_logo-50rAKjuTXbc.mp4
+/references/original-no-subtitle.mp4
+/samples/comparison.mp4
+/samples/comparison-hold.jpg

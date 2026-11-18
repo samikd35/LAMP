@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 348 92">
+  <title>NOVA, original study wordmark</title>
+  <g fill="#00635e">
+    <path d="M5 78V14h17l36 38V14h18v64H60L23 39v39z"/>
+    <path fill="#fa875e" fill-rule="evenodd" d="M133 12c23 0 37 12 37 34s-14 34-37 34-38-12-38-34 15-34 38-34zm0 17c-12 0-19 6-19 17s7 17 19 17 18-6 18-17-6-17-18-17z"/>
+    <path d="M183 14h20l19 44 19-44h20l-29 64h-20z"/>
+    <path fill-rule="evenodd" d="M288 14h22l33 64h-21l-6-13h-35l-6 13h-20zm10 18-10 20h21z"/>
+  </g>
+</svg>
