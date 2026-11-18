@@ -28,7 +28,7 @@ $("#app").innerHTML =
 <section class="panel sequence"><div class="panel-title"><h2>${icon("film")} Performance timeline</h2><span class="mono">7 BEATS</span></div><div class="track" id="beats"></div><div class="times"><span>00:00</span><label><input type="checkbox" id="mute"> Mute preview</label><span>00:${duration}</span></div></section>
 <div class="tech"><span><i></i> DETERMINISTIC TIMELINE</span><span>${fps} FPS <b>/</b> ${fps * duration} FRAMES</span></div></div>
 <aside class="panel settings"><div class="panel-title"><h2>${icon("sliders")} Scene settings</h2><button id="reset" title="Restore defaults" aria-label="Restore defaults">${icon("restart")}</button></div>
-<div class="section"><h3><small>01</small> Personalization</h3><fieldset class="mode"><legend>Artwork</legend><label><input type="radio" name="mode" value="name" checked> Name</label><label><input type="radio" name="mode" value="logo"> Logo</label></fieldset><div id="namePanel"><label for="name">Display name <span id="length"></span></label><input id="name" value="SAMUEL" required spellcheck="false" aria-invalid="false" aria-describedby="hint"><p class="hint" id="hint">1–24 Latin characters. Accents, spaces, hyphens and apostrophes supported.</p><p id="error" class="error" role="status"></p><div class="label">Target letter <button id="auto" class="auto">Auto</button></div><div id="letters"></div></div><div id="logoPanel" hidden><label for="upload">Logo artwork</label><input id="upload" type="file" accept="image/svg+xml,image/png" aria-describedby="logoHelp"><p id="logoHelp" class="hint">Outlined SVG or transparent PNG · up to 2 MB</p><p role="status" id="logoMsg"></p><label for="part">Landing part (left to right)</label><select id="part"></select><button class="secondary" id="match">Match colors to logo</button></div></div>
+<div class="section"><h3><small>01</small> Personalization</h3><fieldset class="mode"><legend>Artwork</legend><label><input type="radio" name="mode" value="name" checked> Name</label><label><input type="radio" name="mode" value="logo"> Logo</label></fieldset><div id="namePanel"><label for="name">Display name <span id="length"></span></label><input id="name" value="SAMUEL" required spellcheck="false" aria-invalid="false" aria-describedby="hint"><p class="hint" id="hint">1–24 Latin characters. Accents, spaces, hyphens and apostrophes supported.</p><p id="error" class="error" role="status"></p><div class="label">Target letter <button id="auto" class="auto">Auto</button></div><div id="letters"></div></div><div id="logoPanel" hidden><label for="upload">Logo artwork</label><input id="upload" type="file" accept=".svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg" aria-describedby="logoHelp"><p id="logoHelp" class="hint">PNG, JPEG, or outlined SVG, up to 2 MB. Solid backgrounds are removed automatically.</p><p role="status" id="logoMsg"></p><label for="part">Landing part (left to right)</label><select id="part"></select><button class="secondary" id="match">Match colors to logo</button></div></div>
 <div class="section"><h3><small>02</small> Appearance</h3><div class="swatches">${colors.map((k) => `<label for="${k}"><span class="swatch"><input type="color" id="${k}" value="${defaults[k]}"></span>${k === "background" ? "Backdrop" : k === "lamp" ? "Lamp" : "Lettering"}</label>`).join("")}</div></div>
 <div class="section"><h3><small>03</small> Output format</h3><div class="formats">${formats.map((k, i) => `<button data-format="${k}"><i class="shape ${k}"></i>${k}<small>${["16:9", "1:1", "9:16"][i]}</small></button>`).join("")}</div></div>
 <div class="section"><label for="ending">Final pose</label> <select id="ending"><option value="replace">Lamp replaces letter</option><option value="restore">Restore full name</option></select></div><div class="export"><div class="spec"><span id="dims"></span><span>${duration} SEC · ${fps} FPS</span></div><button id="export" class="primary">${icon("download")} Export MP4</button><p>H.264 <i>·</i> Stereo foley <i>·</i> Local render</p></div></aside></div></section>
@@ -290,7 +290,7 @@ $("#upload").onchange = async () => {
   $("#logoMsg").textContent = "Preparing artwork...";
   artworkReady();
   try {
-    const next = await importLogo(file);
+    const { asset: next, backgroundRemoved } = await importLogo(file);
     if (version !== uploadVersion) return;
     const { parts } = inspectLogo(next);
     logoTarget = parts.reduce(
@@ -304,8 +304,13 @@ $("#upload").onchange = async () => {
     $<HTMLSelectElement>("#part").value = String(logoTarget);
     logoLabel = file.name.slice(0, 100);
     logo = next;
+    const quality = "svg" in next
+      ? " · Vector artwork"
+      : Math.max(next.w, next.h) < 640
+        ? " · Small image: use a larger PNG or outlined SVG for sharper edges"
+        : "";
     $("#logoMsg").textContent =
-      `${logoLabel} · ${parts.length} selectable ${parts.length === 1 ? "part" : "parts"}`;
+      `${logoLabel} · ${parts.length} selectable ${parts.length === 1 ? "part" : "parts"}${backgroundRemoved ? " · Solid background removed" : ""}${quality}`;
     artworkReady();
     update();
   } catch (e) {

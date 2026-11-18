@@ -5,6 +5,7 @@ import { analyze } from "./config.mjs";
 const font = new Font(data as unknown as FontData);
 const kern: Record<string, number> = data.kern,
   glyphs: Record<string, { ha: number }> = data.glyphs;
+export const titleGap = (count: number) => Math.max(0.28, 1.43 - (count - 5) * 0.063);
 export function makeText(name: string, target: number, color: string) {
   const group = new T.Group(),
     chars = analyze(name).chars,
@@ -41,8 +42,7 @@ export function makeText(name: string, target: number, color: string) {
       group.add(mesh);
       if (i === target) selected = mesh;
     }
-    cursor +=
-      glyphs[ch].ha * unit + Math.max(0.28, 1.43 - (chars.length - 5) * 0.063);
+    cursor += glyphs[ch].ha * unit + titleGap(chars.length);
   });
   const bounds = new T.Box3().setFromObject(group),
     center = (bounds.min.x + bounds.max.x) / 2;

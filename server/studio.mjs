@@ -7,11 +7,13 @@ import { once } from "node:events";
 import { Zip, ZipPassThrough, strToU8 } from "fflate";
 import { queue } from "./queue.mjs";
 import { render } from "./worker.mjs";
+import { logoRasterLimit } from "../src/config.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url)),
   dir = path.join(root, "outputs"),
   dist = path.join(root, "dist"),
   port = Number(process.env.PORT ?? 4173),
-  origin = `http://127.0.0.1:${port}`;
+  origin = `http://127.0.0.1:${port}`,
+  maxJobBody = 4 * Math.ceil((4 * logoRasterLimit ** 2) / 3) + 65536;
 const q = queue((j, signal) => render(j, { dir, origin, signal }));
 const mime = {
   ".html": "text/html",
@@ -58,7 +60,7 @@ const server = http.createServer(async (req, res) => {
       req.setEncoding("utf8");
       for await (const chunk of req) {
         body += chunk;
-        if (body.length > 1500000)
+        if (body.length > maxJobBody)
           return json(413, { error: "Split the batch into smaller lists." });
       }
       const b = JSON.parse(body || "{}");
@@ -92,7 +94,9 @@ const server = http.createServer(async (req, res) => {
                 ...j,
                 config: {
                   ...j.config,
-                  logo: { w: j.config.logo.w, h: j.config.logo.h },
+                  logo: "svg" in j.config.logo
+                    ? { format: "svg" }
+                    : { w: j.config.logo.w, h: j.config.logo.h },
                 },
               }
             : j,

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import { openBrowser } from "../server/worker.mjs";
 const port = process.env.LOGO_TEST_PORT ?? "4181",
   origin = `http://127.0.0.1:${port}`,
-  out = "samples/logos";
+  out = process.env.LOGO_TEST_OUT ?? "samples/logos";
 await mkdir(out, { recursive: true });
 const service = spawn(process.execPath, ["server/studio.mjs"], {
   env: { ...process.env, PORT: port },
@@ -25,20 +25,6 @@ try {
   const p = await browser.newPage({ viewport: { width: 1440, height: 960 } }),
     errors = [];
   p.on("pageerror", (e) => errors.push(e.message));
-  const png = await p.evaluate(
-    async (svg) => {
-      const i = new Image();
-      i.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-      await i.decode();
-      const c = document.createElement("canvas");
-      c.width = 480;
-      c.height = 384;
-      c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
-      return c.toDataURL().split(",")[1];
-    },
-    await readFile("examples/logos/Fold-source.svg", "utf8"),
-  );
-  await writeFile("examples/logos/Fold.png", Buffer.from(png, "base64"));
   await p.goto(origin);
   await p.waitForSelector("#loading[hidden]", { state: "attached" });
   const seek = async (t) =>
@@ -71,6 +57,121 @@ try {
   await p.waitForFunction(() =>
     document.querySelector("#logoMsg").textContent.includes("outlines"),
   );
+  const uploads = await p.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = 192;
+    c.height = 128;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#f4e7cf";
+    ctx.fillRect(0, 0, c.width, c.height);
+    const encode = (type) => c.toDataURL(type, 0.92).split(",")[1];
+    const blank = encode("image/png");
+    ctx.fillStyle = "#034b42";
+    ctx.fillRect(32, 24, 80, 80);
+    ctx.fillStyle = "#f4e7cf";
+    ctx.fillRect(48, 40, 48, 48);
+    ctx.fillStyle = "#97351c";
+    ctx.fillRect(128, 48, 32, 32);
+    const png = encode("image/png"), jpeg = encode("image/jpeg");
+    ctx.fillStyle = "#006e99";
+    ctx.fillRect(0, 0, 16, c.height);
+    const complex = encode("image/png");
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = "#034b42";
+    ctx.fillRect(30, 20, 65, 82);
+    ctx.fillStyle = "#97351c";
+    ctx.fillRect(90, 35, 55, 50);
+    return { blank, png, jpeg, complex, overlap: encode("image/png") };
+  });
+  for (const [key, name, mimeType, message] of [
+    ["png", "flat.png", "image/png", "Solid background removed"],
+    ["jpeg", "flat.jpg", "image/jpeg", "Solid background removed"],
+    ["blank", "blank.png", "image/png", "No visible logo found"],
+    ["complex", "complex.png", "image/png", "Couldn't find a solid background"],
+  ]) {
+    await p.locator("#upload").setInputFiles({
+      name,
+      mimeType,
+      buffer: Buffer.from(uploads[key], "base64"),
+    });
+    await p.waitForFunction(
+      (text) => document.querySelector("#logoMsg").textContent.includes(text),
+      name.startsWith("flat") ? `${name} · 2 selectable parts · ${message}` : message,
+    );
+    assert.equal(await p.locator("#export").isEnabled(), name.startsWith("flat"));
+  }
+  await p.locator("#upload").setInputFiles({
+    name: "touching.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(uploads.overlap, "base64"),
+  });
+  await p.waitForFunction(() =>
+    document.querySelector("#logoMsg").textContent.includes("2 selectable parts"),
+  );
+  const layout = await p.evaluate(async (src) => {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    const pixels = ctx.getImageData(0, 0, c.width, c.height).data;
+    const bounds = [[Infinity, -1, -1], [Infinity, -1, -1]];
+    for (let i = 0; i < pixels.length; i += 4) {
+      const [r, g, b] = pixels.subarray(i, i + 3);
+      const j = r === 3 && g === 75 && b === 66 ? 0 : r === 151 && g === 53 && b === 28 ? 1 : -1;
+      if (j < 0) continue;
+      const x = i / 4 % c.width, y = Math.floor(i / 4 / c.width);
+      const box = bounds[j];
+      box[0] = Math.min(box[0], x);
+      box[1] = Math.max(box[1], x);
+      box[2] = Math.max(box[2], y);
+    }
+    return { bounds, width: c.width, height: c.height };
+  }, await seek(11.5));
+  const [a, b] = layout.bounds;
+  assert.ok(a[1] > a[0] && b[1] > b[0], "Both touching colors should render as separate faces");
+  assert.ok(b[0] - a[1] > layout.width * 0.04, "Name-style gap should be visible");
+  assert.ok(Math.abs(a[2] - b[2]) <= 2, "Head-on faces should share the same screen baseline");
+  const svgFixture = (name, markup) => ({ name, mimeType: "image/svg+xml", buffer: Buffer.from(markup) });
+  for (const [file, message] of [
+    ["examples/logos/Fold-source.svg", "1 selectable part · Vector artwork"],
+    [svgFixture("transformed.svg", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -20 100 70">
+      <g transform="translate(-30 -15)" fill="#143591">
+        <circle cx="24" cy="28" r="18"/><ellipse transform="rotate(16 58 28)" cx="58" cy="28" rx="8" ry="16"/>
+      </g></svg>`), "2 selectable parts · Vector artwork"],
+    [svgFixture("composited.svg", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="30" opacity="0.75" fill="#345678"/></svg>`), "1 selectable part"],
+  ]) {
+    await p.locator("#upload").setInputFiles(file);
+    const label = typeof file === "string" ? file.split("/").at(-1) : file.name;
+    await p.waitForFunction((text) => document.querySelector("#logoMsg").textContent.includes(text), `${label} · ${message}`);
+    assert.equal((await p.locator("#logoMsg").textContent()).includes("Vector artwork"), label !== "composited.svg");
+  }
+  const largePng = await p.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 1152;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#1b5594";
+    ctx.fillRect(16, 16, 1120, 1120);
+    ctx.clearRect(300, 300, 552, 552);
+    return c.toDataURL("image/png").split(",")[1];
+  });
+  await p.locator("#upload").setInputFiles({ name: "large.png", mimeType: "image/png", buffer: Buffer.from(largePng, "base64") });
+  await p.waitForFunction(() => document.querySelector("#logoMsg").textContent.startsWith("large.png · 1 selectable part"));
+  assert.ok(!(await p.locator("#logoMsg").textContent()).includes("Small image"));
+  const uploadResponse = p.waitForResponse((r) => r.request().method() === "POST" && r.url() === origin + "/api/jobs");
+  await p.click("#export");
+  const largeJob = await (await uploadResponse).json();
+  assert.deepEqual(largeJob.errors, []);
+  const largeId = largeJob.ids[0];
+  assert.ok(largeId, "Server should accept an image exceeding the old raster and body limits");
+  const listing = await (await fetch(origin + "/api/jobs")).json();
+  assert.ok(listing.find(({ id }) => id === largeId).config.logo.w > 512);
+  await p.click('[data-action="cancel"][data-id="' + largeId + '"]');
+  await p.click("#back");
   const films = [];
   for (const [key, file, label, part, n] of [
     ["nova", "NOVA.svg", "NOVA · outlined SVG", 1, 4],
@@ -163,6 +264,7 @@ try {
     assert.equal(job.config.target, f.part);
     assert.equal(job.config.lamp, f.lamp);
     assert.equal(job.config.background, f.background);
+    if (f.key === "nova") assert.deepEqual(job.config.logo, { format: "svg" });
     const path = `${out}/${f.key}-${f.variant}.mp4`,
       r = await fetch(origin + "/api/download/" + f.id);
     assert.ok(r.ok);
@@ -303,7 +405,7 @@ try {
   await writeFile(out + "/results.json", JSON.stringify(films, null, 2) + "\n");
   assert.deepEqual(errors, []);
   console.log(
-    "Verified four 390-frame exports, material snapshots, invalid SVG rejection, Name settings and identical Name pose after switching.",
+    "Verified four 390-frame exports, head-on layout, vector SVGs, flat PNG/JPEG extraction, a large raster job, invalid artwork rejection and identical Name pose after switching.",
     films,
   );
 } finally {

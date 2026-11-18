@@ -165,7 +165,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
     word.group.updateMatrixWorld(true);
     blob = shadow();
     contents.add(blob);
-    for (const letter of word.group.children as T.Mesh[]) {
+    for (const letter of word.group.children) {
       const b = new T.Box3().setFromObject(letter),
         s = shadow();
       s.position.set((b.min.x + b.max.x) / 2, 0.003, 0.13);
@@ -193,10 +193,11 @@ export function studioScene(canvas: HTMLCanvasElement) {
       height: word.height + word.baseline,
       baseline: word.baseline,
       end: half + 0.9,
-      frontLane: !!cfg.logo,
+      frontLane: !!cfg.logo && word.group.children.length === 1,
     };
     const cx = cfg.ending === "restore" ? 0.58 : 0;
-    camera.position.set(cx + 0.12, 2.35, 20);
+    const cameraOffset = cfg.logo ? 0 : 0.12;
+    camera.position.set(cx + cameraOffset, 2.35, 20);
     camera.lookAt(cx, 0, 0.08);
     camera.updateMatrixWorld();
     // The entrance intentionally crosses the edge. Every pose after the stop,
@@ -240,7 +241,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
         word.approachX * 0.22) /
       0.78;
     const cy = span * 0.135;
-    camera.position.set(cx + 0.12, cy + 2.35, 20);
+    camera.position.set(cx + cameraOffset, cy + 2.35, 20);
     camera.lookAt(cx, cy, 0.08);
     key.position.set(-2.2, 8, 2.3).multiplyScalar(1 + half * 0.12);
     const sh = key.shadow.camera;
@@ -301,11 +302,11 @@ export function studioScene(canvas: HTMLCanvasElement) {
       if (!config.logo) return -1;
       const ray = new T.Raycaster();
       ray.setFromCamera(new T.Vector2(x, y), camera);
-      const hit = ray.intersectObjects(
-        word.group.children.filter((p) => p.visible),
-        false,
-      )[0];
-      return hit ? word.group.children.indexOf(hit.object) : -1;
+      const hit = ray.intersectObjects(word.group.children.filter((p) => p.visible))[0];
+      if (!hit) return -1;
+      let part = hit.object;
+      while (part.parent && part.parent !== word.group) part = part.parent;
+      return word.group.children.indexOf(part);
     },
     draw,
     resize,

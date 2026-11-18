@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { setImmediate as tick } from "node:timers/promises";
-import { analyze, snapshot } from "../src/config.mjs";
+import { analyze, logoRasterLimit, logoSvgLimit, snapshot } from "../src/config.mjs";
 import { evaluate, strikes } from "../src/timeline.mjs";
 import { soundtrack, sampleRate } from "../src/foley.mjs";
 import { queue } from "../server/queue.mjs";
@@ -40,6 +40,14 @@ test("auto and explicit targets refer to actual grapheme indices", () => {
   assert.equal(snapshot({ name: "A - B" }).target, 0);
   assert.equal(snapshot({ name: "A - B", target: 4 }).target, 4);
   assert.throws(() => snapshot({ name: "A - B", target: 2 }));
+});
+test("job snapshots preserve bounded vector or raster logo assets", () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"/>';
+  assert.deepEqual(snapshot({ name: "Badge.svg", logo: { svg }, target: 1 }).logo, { svg });
+  assert.throws(() => snapshot({ name: "Badge.svg", logo: { svg: "x".repeat(logoSvgLimit + 1) } }), /SVG logo/);
+  const logo = { w: logoRasterLimit, h: 32, rgba: Buffer.alloc(logoRasterLimit * 32 * 4).toString("base64") };
+  assert.deepEqual(snapshot({ name: "Badge.png", logo }).logo, logo);
+  assert.throws(() => snapshot({ name: "Badge.png", logo: { ...logo, w: logoRasterLimit + 1 } }), /logo pixels/);
 });
 test("out of order evaluation reconstructs the pose and baseline contact", () => {
   const s = {

@@ -15,6 +15,8 @@ export const defaults = Object.freeze({
   fps: 30,
   seed: 0,
 });
+export const logoRasterLimit = 1024;
+export const logoSvgLimit = 250000;
 const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
 export function analyze(raw) {
   if (typeof raw !== "string") throw Error("Enter a name.");
@@ -44,15 +46,21 @@ export function analyze(raw) {
 export function snapshot(input) {
   let logo;
   if (input.logo != null) {
-    const { w, h, rgba } = input.logo;
-    if (
-      ![w, h].every((v) => Number.isInteger(v) && v > 0 && v <= 512) ||
-      typeof rgba !== "string" ||
-      rgba.length !== 4 * Math.ceil((w * h * 4) / 3) ||
-      !/^[a-zA-Z0-9+/]+={0,2}$/.test(rgba)
-    )
-      throw Error("Invalid prepared logo pixels.");
-    logo = Object.freeze({ w, h, rgba });
+    const { svg, w, h, rgba } = input.logo;
+    if (svg !== undefined) {
+      if (typeof svg !== "string" || !svg.trim() || svg.length > logoSvgLimit)
+        throw Error("Invalid prepared SVG logo.");
+      logo = Object.freeze({ svg });
+    } else {
+      if (
+        ![w, h].every((v) => Number.isInteger(v) && v > 0 && v <= logoRasterLimit) ||
+        typeof rgba !== "string" ||
+        rgba.length !== 4 * Math.ceil((w * h * 4) / 3) ||
+        !/^[a-zA-Z0-9+/]+={0,2}$/.test(rgba)
+      )
+        throw Error("Invalid prepared logo pixels.");
+      logo = Object.freeze({ w, h, rgba });
+    }
     if (
       typeof input.name !== "string" ||
       !input.name.trim() ||

@@ -34,11 +34,11 @@ Names support **1–24 grapheme clusters** with at least one Latin letter from t
 
 ### Start with a logo
 
-1. Select **Logo** and upload an outlined SVG or transparent PNG up to **2 MB**. Give SVGs a `viewBox` and convert text and strokes to solid filled shapes. PNGs can be up to **4096 × 4096**.
-2. Click a visible part of the logo in the preview or choose it from **Landing part**. Parts are ordered left to right. A connected monogram is one part, while detached shapes such as a dot and stem are separate targets.
+1. Select **Logo** and upload a PNG, JPEG, or outlined SVG up to **2 MB**. The studio can remove a solid background automatically. Leave some plain space around the logo and use artwork that contrasts with it. For photos, gradients, or colors that blend into the background, use a transparent PNG instead. PNGs and JPEGs can be up to **4096 × 4096**. Give SVGs a `viewBox` and convert text and strokes to solid filled shapes.
+2. Click a visible part of the logo in the preview or choose it from **Landing part**. Separate pieces stand on the floor and are staged left to right with Name-style spacing. The studio can also separate touching letters with a clear color boundary. A fused, same-color outline stays one part; use artwork with visible gaps if you need each letter to move independently.
 3. Try **Match colors to logo** to suggest a lamp paint and backdrop from the artwork's main colors. The logo keeps its own face colors, and the two swatches stay editable.
 
-Logo mode samples the artwork at up to 512 pixels on its longest side and extrudes its alpha contours, including holes. Use prominent shapes for details that need to survive the trace. The lamp dismounts to **Restore full logo** at the end. Switching between modes preserves each draft during the session.
+Logo mode extrudes the original curves and solid fills of an outlined SVG, including holes. PNGs, JPEGs, and SVGs that require raster compositing are traced at up to 1024 pixels on their longest side. For crisp lettering use an outlined SVG or a large, clean transparent PNG; small images can look soft at full size. The camera faces the artwork head-on while the extrusion and lighting show its depth. The lamp dismounts to **Restore full logo** at the end. Switching between modes preserves each draft during the session.
 
 ![NOVA and Fold logo exports at anticipation, first landing, and the restored-artwork hold, shown with default and matched colors.](samples/logos/comparison.jpg)
 
@@ -75,7 +75,7 @@ Read left to right, top to bottom. The lamp crosses the title from the right, st
 
 Use **Batch names** to submit up to **250 names**, one per line. Valid rows join the queue with the Name draft's format, colors, and ending. Each name gets its own automatic target. The form keeps invalid rows and reports their original line numbers. Logo exports are submitted individually from the editor.
 
-Jobs render one at a time. You can cancel a queued or active job, or retry a failed or canceled job with its saved settings. **Collect ZIP** packages completed MP4s and a `manifest.json` with job settings and statuses. For logos, the manifest also includes the prepared artwork pixels.
+Jobs render one at a time. You can cancel a queued or active job, or retry a failed or canceled job with its saved settings. **Collect ZIP** packages completed MP4s and a `manifest.json` with job settings and statuses. For logos, the manifest also includes the outlined SVG or prepared raster pixels.
 
 With the studio running, you can submit names from another terminal.
 
