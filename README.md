@@ -73,6 +73,8 @@ Each MP4 contains **390 frames at 30 fps**, encoded as **H.264** with **48 kHz s
 
 Read left to right, top to bottom. The lamp crosses the title from the right, stops just past its mark, and turns back for five strikes. Each strike compresses the selected letter or logo part a little further. The final leap has the largest arc and the heaviest sound. The shade swivels independently of the base, carrying the light pool across the stage.
 
+In tight layouts the studio checks the animated lamp against neighboring pieces in 3D and in the camera view. It tucks the rig first, then tries a rear approach or a higher dismount before reducing the rig size. The selected character can still contact the lamp at the original strike positions. Preview and export use the same clearance plan.
+
 ## Batch and CLI
 
 Use **Batch names** to submit up to **250 names**, one per line. Valid rows join the queue with the Name draft's format, colors, and ending. Each name gets its own automatic target. The form keeps invalid rows and reports their original line numbers. Logo exports are submitted individually from the editor.
