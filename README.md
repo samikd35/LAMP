@@ -1,6 +1,6 @@
 # LAMP · Lamp Name Studio
 
-Make a **13-second 3D title film** from a name or logo. A spring-arm desk lamp hops into frame, winds up, and squashes a letter or part of the artwork. Preview the performance in your browser and export an MP4 with synchronized stereo foley. The studio renders locally.
+Make a **3D title film** from a name (13 seconds) or logo (16.6 seconds). A spring-arm desk lamp hops into frame, winds up, and squashes a letter or part of the artwork. Preview the performance in your browser and export an MP4 with synchronized stereo foley. The studio renders locally.
 
 [Quick start](#quick-start) · [Make a film](#make-a-film) · [Sample films](#sample-films) · [Render pipeline](#render-pipeline)
 
@@ -34,15 +34,15 @@ Names support **1–24 grapheme clusters** with at least one Latin letter from t
 
 ### Start with a logo
 
-![Looping preview of the desk lamp flattening the yellow o in the Google logo before hopping away and restoring the wordmark.](samples/logos/google.gif)
+![Earlier Logo mode sample with the desk lamp flattening the yellow o in Google.](samples/logos/google.gif)
 
 1. Select **Logo** and upload a PNG, JPEG, or outlined SVG up to **2 MB**. The studio can remove a solid background automatically. Leave some plain space around the logo and use artwork that contrasts with it. For photos, gradients, or colors that blend into the background, use a transparent PNG instead. PNGs and JPEGs can be up to **4096 × 4096**. Give SVGs a `viewBox` and convert text and strokes to solid filled shapes.
 2. Click a visible part of the logo in the preview or choose it from **Landing part**. Separate pieces stand on the floor and are staged left to right with Name-style spacing. The studio can also separate touching letters with a clear color boundary. A fused, same-color outline stays one part; use artwork with visible gaps if you need each letter to move independently.
 3. Try **Match colors to logo** to suggest a lamp paint and backdrop from the artwork's main colors. The logo keeps its own face colors, and the two swatches stay editable.
 
-Logo mode extrudes the original curves and solid fills of an outlined SVG, including holes. PNGs, JPEGs, and SVGs that require raster compositing are traced at up to 1024 pixels on their longest side. For crisp lettering use an outlined SVG or a large, clean transparent PNG; small images can look soft at full size. The camera faces the artwork head-on while the extrusion and lighting show its depth. The lamp dismounts to **Restore full logo** at the end. Switching between modes preserves each draft during the session.
+Logo mode extrudes the original curves and solid fills of an outlined SVG, including holes. PNGs, JPEGs, and SVGs that require raster compositing are traced at up to 1024 pixels on their longest side. For crisp lettering use an outlined SVG or a large, clean transparent PNG. The opening holds the original artwork together, then the camera pulls straight back as the parts spread out. After the stomps, the selected part springs back and sends the lamp into the ceiling. It falls behind the logo, gets up, and hops to the side. Switching between modes preserves each draft during the session.
 
-![NOVA and Fold logo exports at anticipation, first landing, and the restored-artwork hold, shown with default and matched colors.](samples/logos/comparison.jpg)
+![Earlier NOVA and Fold logo exports shown with default and matched colors.](samples/logos/comparison.jpg)
 
 | Logo | Try this artwork | Default colors | Matched colors |
 | --- | --- | --- | --- |
@@ -53,7 +53,7 @@ Logo mode extrudes the original curves and solid fills of an outlined SVG, inclu
 
 ![Lamp Name Studio editor paused on the first strike, with the lamp landing on the M in SAMUEL. The timeline and scene settings are visible.](samples/studio.jpg)
 
-Press **Play**, drag the scrubber, or click one of the seven timeline beats. The editor opens on a paused staging pose, and the first Play starts at the opening fade. **Mute preview** only affects monitoring. Choose a format and set the scene colors, then select **Export MP4** and download the finished film from the **Render queue**.
+Press **Play**, drag the scrubber, or click one of the seven timeline beats. Name opens on a paused staging pose, and a newly uploaded logo opens in its original arrangement. The first Play starts from the beginning. **Mute preview** only affects monitoring. Choose a format and set the scene colors, then select **Export MP4** and download the finished film from the **Render queue**.
 
 ## Sample films
 
@@ -73,7 +73,7 @@ Each MP4 contains **390 frames at 30 fps**, encoded as **H.264** with **48 kHz s
 
 Read left to right, top to bottom. The lamp crosses the title from the right, stops just past its mark, and turns back for five strikes. Each strike compresses the selected letter or logo part a little further. The final leap has the largest arc and the heaviest sound. The shade swivels independently of the base, carrying the light pool across the stage.
 
-In tight layouts the studio checks the animated lamp against neighboring pieces in 3D and in the camera view. It tucks the rig first, then tries a rear approach or a higher dismount before reducing the rig size. The selected character can still contact the lamp at the original strike positions. Preview and export use the same clearance plan.
+In tight layouts the studio checks the animated lamp against neighboring pieces. It can tuck the rig, move the approach back, or fit a smaller rig while keeping the strike positions fixed. Name also checks the camera view and can lift the dismount. Preview and export use the same clearance plan.
 
 ## Batch and CLI
 
@@ -102,19 +102,19 @@ flowchart TD
     Queue --> Browser["Headless Chromium"]
     Stage["Shared Three.js stage and timeline"] --> Editor
     Stage --> Browser
-    Foley["Shared foley synthesizer"] -->|Web Audio| Editor
+    Foley["Shared stereo foley"] -->|Web Audio| Editor
     Foley -->|Stereo WAV| Encode["FFmpeg and ffprobe"]
-    Browser -->|390 JPEG frames| Encode
+    Browser -->|390 Name or 498 Logo frames| Encode
     Encode --> Output["Validated MP4 in outputs/"]
 ```
 
-The editor and render page share an articulated lamp, orthographic camera, and exposure sheet. The pose is evaluated directly from time, so seeking backward reconstructs the same scene. For export, Playwright opens `render.html` in fresh Chromium, warms the shaders, then samples the canvas at `n / 30` seconds for frames `0–389`. The exported picture comes from the canvas, while the monitor controls and camera labels live in the editor.
+The editor and render page share the rig and timeline. Name uses an orthographic camera and Logo uses a head-on perspective camera. Both evaluate the pose directly from time so seeking backward reconstructs the same scene. Chromium samples the canvas at `n / 30` seconds, capturing 390 JPEG frames for Name or 498 lossless PNG frames for Logo. For Logo, FFmpeg downsamples from twice the output width and height to smooth the edges.
 
-The worker makes a stereo WAV with the same foley synthesizer used for preview. FFmpeg encodes the frames and audio, then ffprobe validates the finished file before it moves into `outputs/`. Filenames include a UUID so duplicate names get separate films. Queue history lives in memory. The files in `outputs/` remain on disk after a restart.
+The worker makes a stereo WAV from the same mix used for preview, including the clatter at the ceiling strike in Logo. FFmpeg encodes the frames and audio, then ffprobe validates the finished file before it moves into `outputs/`. Filenames include a UUID so duplicate names get separate films. Queue history lives in memory. The files in `outputs/` remain on disk after a restart.
 
 | Change this | Where it lives |
 | --- | --- |
-| Hops, turns, compressions, and endings | [`src/timeline.mjs`](src/timeline.mjs) |
+| Hops, turns, compressions, and endings | [`src/timeline.mjs`](src/timeline.mjs) · [`src/logo-performance.ts`](src/logo-performance.ts) |
 | Footfalls, hinges, spring sweeps, and reflections | [`src/foley.mjs`](src/foley.mjs) |
 | Lamp rig, stage lighting, and camera framing | [`src/lamp.ts`](src/lamp.ts) · [`src/scene.ts`](src/scene.ts) |
 | Glyph layout, logo contours, and input validation | [`src/text.ts`](src/text.ts) · [`src/logo.ts`](src/logo.ts) · [`src/config.mjs`](src/config.mjs) |
@@ -148,6 +148,6 @@ These checks regenerate the three name samples and their pose sheets, compare a 
 
 ## Credits and development study
 
-The choreography was developed through a frame-by-frame study of a Pixar lamp ident. The studio builds the rig and scene procedurally and synthesizes its own foley. The analysis and measurements are included, and the downloaded footage and comparison media are optional local study inputs. [Development study](references/STUDY.md) · [Frame measurements](references/frame-study.csv)
+The choreography was developed through a frame-by-frame study of a Pixar lamp ident. The studio builds the rig and scene procedurally and synthesizes the footfalls and hinges. The ceiling crash uses a short CC0 recording by OwlStorm. [Development study](references/STUDY.md) · [Frame measurements](references/frame-study.csv) · [Pots and Pans Clatter 1](https://freesound.org/people/OwlStorm/sounds/209002/)
 
 The display lettering uses **Bodoni Moda Regular** by the Bodoni Moda Project Authors. Regenerate the bundled outlines with `node scripts/font.mjs`. [SIL Open Font License 1.1](src/assets/OFL.txt)

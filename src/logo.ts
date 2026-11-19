@@ -266,6 +266,8 @@ function prepare(asset: Logo) {
     ({ parts, colors } = raster!);
   }
   parts.sort((a, b) => a.b.min.x + a.b.max.x - b.b.min.x - b.b.max.x);
+  const source = new T.Box2();
+  for (const part of parts) source.union(part.b);
   const gap = titleGap(parts.length);
   let width = 0;
   const placed = parts.map((part, i) => {
@@ -273,7 +275,7 @@ function prepare(asset: Logo) {
     width += part.b.max.x - part.b.min.x + (i < parts.length - 1 ? gap : 0);
     return { ...part, x };
   }).map((part) => ({ ...part, x: part.x - width / 2, crown: part.crown + part.x - width / 2 }));
-  return { raster, vector, parts: placed, width, ...colors };
+  return { raster, vector, parts: placed, source, width, ...colors };
 }
 let last: Logo | undefined, prepared: ReturnType<typeof prepare>;
 export function inspectLogo(asset: Logo) {
@@ -288,7 +290,7 @@ export function inspectLogo(asset: Logo) {
 }
 
 export function makeLogo(asset: Logo, index: number) {
-  const { raster, vector, parts, width } = inspectLogo(asset),
+  const { raster, vector, parts, source, width } = inspectLogo(asset),
     part = parts[index];
   if (!part) throw Error("Choose a valid logo part.");
   const group = new T.Group();
@@ -308,8 +310,8 @@ export function makeLogo(asset: Logo, index: number) {
       const face = rasterFace ?? new T.MeshBasicMaterial({ color: tint });
       const side = new T.MeshStandardMaterial({ color: mix(tint, "#222222", 0.23), roughness: 0.45 });
       const geo = new T.ExtrudeGeometry(shape, {
-        depth: 0.52, bevelEnabled: false, curveSegments: vector ? logoCurveSegments : 1,
-      }).translate(0, 0, -0.3);
+        depth: 0.35, bevelEnabled: false, curveSegments: vector ? logoCurveSegments : 1,
+      }).translate(0, 0, -0.35);
       const mesh = new T.Mesh(geo, [face, side]);
       if (vector) {
         const { scale, origin } = vector;
@@ -327,18 +329,26 @@ export function makeLogo(asset: Logo, index: number) {
     group.add(piece);
     return piece;
   });
-  const left = part.x + part.b.min.x, neighbor = parts[index - 1];
+  const left = part.x + part.b.min.x,
+    neighbor = parts[index - 1],
+    sourceCenter = source.getCenter(new T.Vector2()),
+    first = parts[0].b;
   return {
     group,
     selected: meshes[index],
     width,
+    sourceSize: source.getSize(new T.Vector2()),
+    firstWidth: first.max.x - first.min.x,
     height: part.b.max.y - part.b.min.y,
     targetX: part.crown,
-    baseline: 0,
-    lampScale: Math.min(
-      1.12,
-      Math.max(0.64, (part.b.max.x - part.b.min.x) * 1.3),
-    ),
-    approachX: neighbor ? (left + neighbor.x + neighbor.b.max.x) / 2 : left - 0.85,
+    behind: !!neighbor,
+    approachX: neighbor ? (left + neighbor.x + neighbor.b.max.x) / 2 : left - 1.82,
+    layout(amount: number) {
+      meshes.forEach((mesh, i) => {
+        const { x, b } = parts[i];
+        mesh.position.x = T.MathUtils.lerp(-sourceCenter.x, x, amount);
+        mesh.position.y = (b.min.y - source.min.y) * (1 - amount);
+      });
+    },
   };
 }

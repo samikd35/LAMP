@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import {
   mkdir,
   mkdtemp,
+  readFile,
   writeFile,
   rm,
   rename,
@@ -12,7 +13,7 @@ import {
 import path from "node:path";
 import { constants } from "node:fs";
 import { presets } from "../src/config.mjs";
-import { wave, sampleRate } from "../src/foley.mjs";
+import { ceilingClatterUrl, wave, sampleRate } from "../src/foley.mjs";
 const exec = promisify(execFile);
 export async function openBrowser() {
   const options = {
@@ -72,7 +73,9 @@ export async function render(job, { dir, origin, signal }) {
     browser = await openBrowser();
     signal.throwIfAborted();
     const cfg = job.config,
-      [w, h] = presets[cfg.aspect];
+      [w, h] = presets[cfg.aspect],
+      extension = cfg.logo ? "png" : "jpg",
+      clatter = cfg.logo ? await readFile(ceilingClatterUrl, { signal }) : undefined;
     const page = await browser.newPage({
       viewport: { width: w, height: h },
       deviceScaleFactor: 1,
@@ -80,12 +83,12 @@ export async function render(job, { dir, origin, signal }) {
     await page.goto(origin + "/render.html");
     await page.waitForFunction(() => typeof window.prepare === "function");
     await page.evaluate((c) => window.prepare(c), cfg);
-    for (let i = 0; i < cfg.duration * cfg.fps; i++) {
+    for (let i = 0; i < cfg.frameCount; i++) {
       signal.throwIfAborted();
-      const jpeg = await page.evaluate((t) => window.frame(t), i / cfg.fps);
+      const image = await page.evaluate((t) => window.frame(t), i / cfg.fps);
       await writeFile(
-        path.join(tmp, `${String(i).padStart(4, "0")}.jpg`),
-        Buffer.from(jpeg, "base64"),
+        path.join(tmp, `${String(i).padStart(4, "0")}.${extension}`),
+        Buffer.from(image, "base64"),
       );
       job.frames = i + 1;
     }
@@ -94,7 +97,7 @@ export async function render(job, { dir, origin, signal }) {
     browser = null;
     const mp4 = path.join(tmp, "film.mp4");
     const audio = path.join(tmp, "foley.wav");
-    await writeFile(audio, wave(cfg));
+    await writeFile(audio, wave(cfg, clatter));
     await run("ffmpeg", [
       "-hide_banner",
       "-loglevel",
@@ -102,7 +105,7 @@ export async function render(job, { dir, origin, signal }) {
       "-framerate",
       String(cfg.fps),
       "-i",
-      path.join(tmp, "%04d.jpg"),
+      path.join(tmp, `%04d.${extension}`),
       "-i",
       audio,
       "-map",
@@ -114,11 +117,11 @@ export async function render(job, { dir, origin, signal }) {
       "-b:a",
       "192k",
       "-vf",
-      "scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p",
+      `scale=${cfg.logo ? `${w}:${h}:flags=lanczos:` : ""}in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p`,
       "-c:v",
       "libx264",
       "-crf",
-      "17",
+      cfg.logo ? "14" : "17",
       "-preset",
       "fast",
       "-colorspace",
@@ -158,7 +161,7 @@ export async function render(job, { dir, origin, signal }) {
       v.pix_fmt !== "yuv420p" ||
       v.width !== w ||
       v.height !== h ||
-      +v.nb_frames !== job.frames ||
+      +v.nb_frames !== cfg.frameCount ||
       +v.duration !== cfg.duration ||
       v.avg_frame_rate !== `${cfg.fps}/1` ||
       !info.format.format_name.includes("mp4")

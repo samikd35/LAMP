@@ -45,6 +45,7 @@ try {
   const before = await seek(6.12);
   await p.check('[value="logo"][name="mode"]');
   assert.ok(await p.locator("#export").isDisabled());
+  assert.equal(await p.getAttribute("#scrub", "max"), "16.6");
   await p
     .locator("#upload")
     .setInputFiles({
@@ -108,7 +109,7 @@ try {
   await p.waitForFunction(() =>
     document.querySelector("#logoMsg").textContent.includes("2 selectable parts"),
   );
-  const layout = await p.evaluate(async (src) => {
+  const coloredBounds = (image) => p.evaluate(async (src) => {
     const img = new Image();
     img.src = src;
     await img.decode();
@@ -130,7 +131,12 @@ try {
       box[2] = Math.max(box[2], y);
     }
     return { bounds, width: c.width, height: c.height };
-  }, await seek(11.5));
+  }, image);
+  const assembled = await coloredBounds(await seek(0));
+  const [firstPart, secondPart] = assembled.bounds;
+  assert.ok(secondPart[0] - firstPart[1] < assembled.width * 0.02, "Opening should preserve the uploaded gap");
+  assert.ok(Math.abs(firstPart[2] - secondPart[2]) > 4, "Opening should preserve the original vertical alignment");
+  const layout = await coloredBounds(await seek(3.2));
   const [a, b] = layout.bounds;
   assert.ok(a[1] > a[0] && b[1] > b[0], "Both touching colors should render as separate faces");
   assert.ok(b[0] - a[1] > layout.width * 0.04, "Name-style gap should be visible");
@@ -220,6 +226,15 @@ try {
           "Hole should miss; O stroke should select part 2",
         );
       }
+      const ceiling = await seek(379 / 30);
+      const recovered = await seek(16.5);
+      assert.notEqual(ceiling, recovered, "Preview should include the crash and recovery");
+      assert.equal(await seek(379 / 30), ceiling, "Seeking back to the crash reconstructs the same frame");
+      await seek(13.1);
+      await p.click("#play");
+      await p.waitForFunction(() => Number(document.querySelector("#scrub").value) > 13.2);
+      await p.click("#play");
+      assert.doesNotMatch(await p.locator("#notice").textContent(), /Audio (device )?unavailable/);
     }
     for (const variant of ["standard", "matched"]) {
       if (variant === "matched") await p.click("#match");
@@ -238,6 +253,7 @@ try {
     }
   }
   await p.check('[value="name"][name="mode"]');
+  assert.equal(await p.getAttribute("#scrub", "max"), "13");
   assert.equal(await p.inputValue("#name"), "Zoë");
   assert.equal(await p.inputValue("#lamp"), "#947aca");
   assert.equal(
@@ -261,6 +277,7 @@ try {
       if (job.status !== "complete") await sleep(500);
     } while (job.status !== "complete" && Date.now() < until);
     assert.equal(job.status, "complete");
+    assert.equal(job.frames, 498);
     assert.equal(job.config.target, f.part);
     assert.equal(job.config.lamp, f.lamp);
     assert.equal(job.config.background, f.background);
@@ -291,14 +308,15 @@ try {
         v.duration,
         a.codec_name,
         a.channels,
+        a.sample_rate,
       ],
-      [1920, 1080, "h264", "yuv420p", "390", "13.000000", "aac", 2],
+      [1920, 1080, "h264", "yuv420p", "498", "16.600000", "aac", 2, "48000"],
     );
     const pixels = ff(
       "-i",
       path,
       "-vf",
-      "select='eq(n,345)',scale=960:540",
+      "select='eq(n,490)',scale=960:540",
       "-frames:v",
       "1",
       "-pix_fmt",
@@ -350,7 +368,7 @@ try {
         );
       }
     }
-    for (const frame of [162, 183, 345])
+    for (const frame of [0, 379, 490])
       stills.push(
         ff(
           "-i",
@@ -378,9 +396,9 @@ try {
       ctx.font = "17px sans-serif";
       ctx.fillStyle = "#edece3";
       [
-        "Anticipation · 5.40 s",
-        "First landing · 6.10 s",
-        "Restored artwork · 11.50 s",
+        "Original artwork",
+        "Ceiling contact · 12.63 s",
+        "Restored artwork · 16.33 s",
       ].forEach((s, i) => ctx.fillText(s, 12 + i * 420, 26));
       for (let i = 0; i < stills.length; i++) {
         const row = Math.floor(i / 3),
@@ -405,7 +423,7 @@ try {
   await writeFile(out + "/results.json", JSON.stringify(films, null, 2) + "\n");
   assert.deepEqual(errors, []);
   console.log(
-    "Verified four 390-frame exports, head-on layout, vector SVGs, flat PNG/JPEG extraction, a large raster job, invalid artwork rejection and identical Name pose after switching.",
+    "Verified four 498-frame exports, original and spaced logo layouts, crash scrubbing, vector SVGs, flat PNG/JPEG extraction, a large raster job, invalid artwork rejection and identical Name pose after switching.",
     films,
   );
 } finally {

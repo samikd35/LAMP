@@ -4,6 +4,7 @@ import { makeLamp } from "./lamp";
 import { placeLamp, planLampClearance } from "./lamp-clearance";
 import { makeText } from "./text";
 import { makeLogo } from "./logo";
+import { makeLogoPerformance } from "./logo-performance";
 import { evaluate } from "./timeline.mjs";
 import { snapshot, presets } from "./config.mjs";
 export type Config = ReturnType<typeof snapshot>;
@@ -45,10 +46,10 @@ export function studioScene(canvas: HTMLCanvasElement) {
   const wash = new T.Mesh(
     new T.PlaneGeometry(2, 2),
     new T.ShaderMaterial({
-      uniforms: { base: { value: new T.Color() }, floorTint: { value: 1 } },
+      uniforms: { base: { value: new T.Color() } },
       vertexShader:
         "varying vec2 v; void main(){v=uv;gl_Position=vec4(position.xy,0.99999,1.);}",
-      fragmentShader: `uniform vec3 base; uniform float floorTint; varying vec2 v; void main(){float sky=smoothstep(.37,.99,v.y);float upper=smoothstep(.34,.57,v.y);float front=1.-smoothstep(.0,.46,v.y);vec3 col=base*(1.-.29*sky+upper*vec3(0.,.055,.19))+front*floorTint*vec3(.036,-.029,-.078);gl_FragColor=vec4(max(vec3(0.),col),1.);\n#include <colorspace_fragment>\n}`,
+      fragmentShader: `uniform vec3 base; varying vec2 v; void main(){float sky=smoothstep(.37,.99,v.y);float upper=smoothstep(.34,.57,v.y);float front=1.-smoothstep(.0,.46,v.y);vec3 col=base*(1.-.29*sky+upper*vec3(0.,.055,.19))+front*vec3(.036,-.029,-.078);gl_FragColor=vec4(max(vec3(0.),col),1.);\n#include <colorspace_fragment>\n}`,
       depthWrite: false,
       depthTest: false,
     }),
@@ -115,6 +116,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
   let contents: T.Group,
     config: Config,
     lamp: ReturnType<typeof makeLamp>,
+    logoPerformance: ReturnType<typeof makeLogoPerformance> | undefined,
     clearance: ReturnType<typeof planLampClearance> | undefined,
     word: ReturnType<typeof makeText> | ReturnType<typeof makeLogo>,
     blob: ReturnType<typeof shadow>,
@@ -127,7 +129,6 @@ export function studioScene(canvas: HTMLCanvasElement) {
       height: 0,
       baseline: 0,
       end: 0,
-      frontLane: false,
     };
   function clear() {
     if (!contents) return;
@@ -145,6 +146,17 @@ export function studioScene(canvas: HTMLCanvasElement) {
       m.dispose();
     });
   }
+  function lightTitle(width: number) {
+    const half = width / 2;
+    key.position.set(-2.2, 8, 2.3).multiplyScalar(1 + half * 0.12);
+    const sh = key.shadow.camera;
+    sh.left = -half - 4;
+    sh.right = half + 4;
+    sh.top = 4.5 + half * 0.4;
+    sh.bottom = -4 - half * 0.4;
+    sh.far = 40 + half * 2;
+    sh.updateProjectionMatrix();
+  }
   function configure(cfg: Config) {
     clear();
     config = cfg;
@@ -154,15 +166,22 @@ export function studioScene(canvas: HTMLCanvasElement) {
     contents = new T.Group();
     scene.add(contents);
     wash.material.uniforms.base.value.set(cfg.background);
-    const base = wash.material.uniforms.base.value;
-    wash.material.uniforms.floorTint.value = cfg.logo
-      ? Math.min(1, 2 * Math.min(base.r, base.g, base.b))
-      : 1;
-    word = cfg.logo
-      ? makeLogo(cfg.logo, cfg.target)
-      : makeText(cfg.name, cfg.target, cfg.text);
+    wash.visible = bars.visible = pool.visible = !cfg.logo;
     lamp = makeLamp(cfg.lamp);
     clearance = undefined;
+    logoPerformance = undefined;
+    if (cfg.logo) {
+      const logo = makeLogo(cfg.logo, cfg.target);
+      word = logo;
+      contents.add(logo.group, lamp.root);
+      lightTitle(logo.width);
+      logoPerformance = makeLogoPerformance(contents, logo, lamp, ratio, cfg.background);
+      clearance = logoPerformance.clearance;
+      draw(0);
+      return;
+    }
+    word = makeText(cfg.name, cfg.target, cfg.text);
+    floor.material.opacity = 0.22;
     lamp.root.scale.setScalar(word.lampScale);
     contents.add(word.group, lamp.root);
     word.group.updateMatrixWorld(true);
@@ -196,10 +215,9 @@ export function studioScene(canvas: HTMLCanvasElement) {
       height: word.height + word.baseline,
       baseline: word.baseline,
       end: half + 0.9,
-      frontLane: !!cfg.logo && word.group.children.length === 1,
     };
     const cx = cfg.ending === "restore" ? 0.58 : 0;
-    const cameraOffset = cfg.logo ? 0 : 0.12;
+    const cameraOffset = 0.12;
     camera.position.set(cx + cameraOffset, 2.35, 20);
     camera.lookAt(cx, 0, 0.08);
     camera.updateMatrixWorld();
@@ -216,8 +234,8 @@ export function studioScene(canvas: HTMLCanvasElement) {
     });
     const sample = (progress: number) => evaluate(progress * cfg.duration, cfg.duration, staging, cfg.ending);
     const fitLamp = () => {
-      for (let i = Math.ceil((93 / 24) * cfg.fps); i <= cfg.duration * cfg.fps; i++) {
-        const progress = i / (cfg.duration * cfg.fps);
+      for (let i = Math.ceil((93 / 24) * cfg.fps); i <= cfg.frameCount; i++) {
+        const progress = i / cfg.frameCount;
         placeLamp(lamp, sample(progress), progress, clearance);
         lamp.root.updateMatrixWorld(true);
         for (const part of parts) {
@@ -244,19 +262,12 @@ export function studioScene(canvas: HTMLCanvasElement) {
         word.approachX * 0.22) /
       0.78;
     clearance = planLampClearance(lamp, word, camera.matrixWorldInverse, sample,
-      cfg.duration * cfg.fps * 2, word.lampScale, cfg.ending === "restore");
+      cfg.frameCount * 2, word.lampScale, cfg.ending === "restore");
     if (clearance.tuck.length) fitLamp();
     const cy = span * 0.135;
     camera.position.set(cx + cameraOffset, cy + 2.35, 20);
     camera.lookAt(cx, cy, 0.08);
-    key.position.set(-2.2, 8, 2.3).multiplyScalar(1 + half * 0.12);
-    const sh = key.shadow.camera;
-    sh.left = -half - 4;
-    sh.right = half + 4;
-    sh.top = 4.5 + half * 0.4;
-    sh.bottom = -4 - half * 0.4;
-    sh.far = 40 + half * 2;
-    sh.updateProjectionMatrix();
+    lightTitle(word.width);
     draw(0);
   }
   function pose(t: number) {
@@ -291,6 +302,11 @@ export function studioScene(canvas: HTMLCanvasElement) {
     pool.material.uniforms.strength.value = 0.6 / (1 + y * 0.65);
   }
   function draw(t: number) {
+    if (logoPerformance) {
+      floor.material.opacity = 0.21 * logoPerformance.pose(t);
+      renderer.render(scene, logoPerformance.camera);
+      return;
+    }
     pose(t);
     camera.left = (-span * ratio) / 2;
     camera.right = -camera.left;
@@ -306,9 +322,9 @@ export function studioScene(canvas: HTMLCanvasElement) {
     configure,
     clearance: () => clearance && { before: clearance.originalScore, after: clearance.score, scale: clearance.scale },
     pickLogoPart(x: number, y: number) {
-      if (!config.logo) return -1;
+      if (!logoPerformance) return -1;
       const ray = new T.Raycaster();
-      ray.setFromCamera(new T.Vector2(x, y), camera);
+      ray.setFromCamera(new T.Vector2(x, y), logoPerformance.camera);
       const hit = ray.intersectObjects(word.group.children.filter((p) => p.visible))[0];
       if (!hit) return -1;
       let part = hit.object;
@@ -317,7 +333,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
     },
     draw,
     resize,
-    warm: () => renderer.compileAsync(scene, camera),
+    warm: () => renderer.compileAsync(scene, logoPerformance?.camera ?? camera),
     dispose() {
       clear();
       soft.dispose();

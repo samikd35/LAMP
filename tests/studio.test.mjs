@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { setImmediate as tick } from "node:timers/promises";
 import { analyze, logoRasterLimit, logoSvgLimit, snapshot } from "../src/config.mjs";
 import { evaluate, strikes } from "../src/timeline.mjs";
@@ -49,6 +50,15 @@ test("job snapshots preserve bounded vector or raster logo assets", () => {
   assert.deepEqual(snapshot({ name: "Badge.png", logo }).logo, logo);
   assert.throws(() => snapshot({ name: "Badge.png", logo: { ...logo, w: logoRasterLimit + 1 } }), /logo pixels/);
 });
+test("queued Logo films have 498 frames and queued Name films have 390", () => {
+  const q = queue(async () => {});
+  const logo = { svg: '<svg xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20"/></svg>' };
+  const logoJob = q.add({ name: "Badge.svg", logo, duration: 13, frameCount: 390 });
+  const nameJob = q.add({ name: "SAMUEL", duration: 16.6, frameCount: 498 });
+  const timing = ({ config: { duration, fps, frameCount } }) => [duration, fps, frameCount];
+  assert.deepEqual(timing(logoJob), [16.6, 30, 498]);
+  assert.deepEqual(timing(nameJob), [13, 30, 390]);
+});
 test("out of order evaluation reconstructs the pose and baseline contact", () => {
   const s = {
     start: -4,
@@ -84,6 +94,20 @@ test("foley onsets share the strike clock, with a stronger final impact", () => 
   );
   assert.ok(peaks.every((p) => p > 0.08));
   assert.ok(peaks.at(-1) > 1.8 * peaks[0]);
+});
+test("Logo foley follows the delayed entrance and ceiling contact", async () => {
+  const cfg = snapshot({ name: "Badge.svg", logo: { svg: "<svg/>" } });
+  const clatter = await readFile(new URL("../src/assets/ceiling-clatter.wav", import.meta.url));
+  const [left, right] = soundtrack(cfg, clatter);
+  const peak = (from, length) => left
+    .subarray(Math.round(from * sampleRate), Math.round((from + length) * sampleRate))
+    .reduce((max, sample) => Math.max(max, Math.abs(sample)), 0);
+  assert.equal(left.length, 796800);
+  const firstFootfall = 3.3 + 22 / 24;
+  assert.equal(peak(0, firstFootfall), 0);
+  assert.ok(peak(firstFootfall, 0.03) > 0.012);
+  assert.ok(peak(379 / 30, 0.075) > peak(379 / 30 - 0.075, 0.075) * 2);
+  assert.notDeepEqual(left, right);
 });
 test("queue isolation, cancellation, failure, continuation and retry", async () => {
   let resolve,

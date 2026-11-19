@@ -1,9 +1,10 @@
 import "./studio.css";
 import { studioScene } from "./scene";
-import { analyze, defaults, presets, snapshot } from "./config.mjs";
+import { analyze, defaults, logoBackdrop, logoFrameCount, presets, snapshot } from "./config.mjs";
 import { icon } from "./icons";
-import { soundtrack, sampleRate } from "./foley.mjs";
+import { ceilingClatterUrl, soundtrack, sampleRate } from "./foley.mjs";
 import { importLogo, inspectLogo, type Logo } from "./logo";
+import { chapters, logoChapters } from "./timeline.mjs";
 const $ = <T extends HTMLElement = HTMLElement>(s: string) =>
   document.querySelector<T>(s)!;
 const esc = (v: string) =>
@@ -16,10 +17,7 @@ const esc = (v: string) =>
   );
 const colors = ["lamp", "text", "background"] as const,
   formats = Object.keys(presets) as (keyof typeof presets)[];
-import { chapters } from "./timeline.mjs";
-const phases = chapters as [string, number][],
-  duration = defaults.duration,
-  fps = defaults.fps;
+const { duration, fps } = defaults;
 $("#app").innerHTML =
   `<header><div class="brand"><span class="brand-mark">${icon("lamp")}</span>Lamp Name <b>Studio</b></div><nav aria-label="Workspace"><button id="editorTab" aria-pressed="true">${icon("sliders")}Editor</button><button id="queueTab" aria-pressed="false">${icon("layers")}Render queue <i id="count">0</i></button></nav><span class="local"><em></em> LOCAL WORKSPACE</span></header>
 <div class="workspace"><section id="editor"><div class="intro"><div><p class="eyebrow"><i></i> ANIMATION WORKSPACE</p><h1>Scene editor</h1><p>Stage a name, direct the lamp, and render your film.</p></div><button class="secondary" id="batchLink">${icon("layers")} Batch names</button></div>
@@ -49,9 +47,23 @@ let raw: string = defaults.name,
 let studio: ReturnType<typeof studioScene>;
 let logoMode = false,
   logo: Logo | undefined,
+  clatter: Uint8Array | undefined,
+  clatterLoading = false,
   logoLabel = "",
   logoTarget = 0,
   uploadVersion = 0;
+async function warmClatter() {
+  if (clatter || clatterLoading) return;
+  clatterLoading = true;
+  try {
+    const response = await fetch(ceilingClatterUrl);
+    if (response.ok) clatter = new Uint8Array(await response.arrayBuffer());
+  } catch {
+    // The visual preview remains available. Playing again retries the request.
+  } finally {
+    clatterLoading = false;
+  }
+}
 const appearance = () =>
   Object.fromEntries(
     colors.map((k) => [k, $<HTMLInputElement>("#" + k).value]),
@@ -64,17 +76,42 @@ const draft = () => ({
   poster,
 });
 let nameDraft = draft(),
-  logoDraft = { ...draft(), ending: "restore" };
+  logoDraft: ReturnType<typeof draft> = {
+    ...nameDraft,
+    appearance: { ...nameDraft.appearance, background: logoBackdrop },
+    ending: "restore",
+    t: 0,
+  };
 const canvas = $("canvas") as HTMLCanvasElement,
   name = $<HTMLInputElement>("#name"),
   scrub = $<HTMLInputElement>("#scrub");
 const clock = (s: number) => `00:${s.toFixed(2).padStart(5, "0")}`;
+let phases: [string, number][];
+function updateTimeline() {
+  const nextPhases = (logoMode ? logoChapters : chapters) as [string, number][];
+  if (phases === nextPhases) return;
+  phases = nextPhases;
+  const frames = logoMode ? logoFrameCount : defaults.frameCount;
+  const end = frames / fps;
+  scrub.max = String(end);
+  $(".transport .mono").textContent = clock(end);
+  $(".times span:last-child").textContent = clock(end).replace(/\.00$/, "");
+  $(".tech span:last-child").innerHTML = `${fps} FPS <b>/</b> ${frames} FRAMES`;
+  $(".spec span:last-child").textContent = `${end} SEC · ${fps} FPS`;
+  $("#beats").innerHTML = phases
+    .map(
+      ([label, time], i) =>
+        `<button data-t="${time}" aria-label="Seek to ${label}, ${time.toFixed(2)} seconds"><i></i><small>${String(i + 1).padStart(2, "0")}</small>${label}</button>`,
+    )
+    .join("");
+}
 function draw() {
   if (!ready) return;
   studio.draw(t);
   $("#time").textContent = clock(t);
   scrub.value = String(t);
-  scrub.style.setProperty("--pct", `${(t * 100) / duration}%`);
+  scrub.style.setProperty("--pct", `${(t * 100) / cfg.duration}%`);
+  scrub.setAttribute("aria-valuetext", `${t.toFixed(2)} of ${cfg.duration} seconds`);
   document
     .querySelectorAll<HTMLButtonElement>("[data-t]")
     .forEach((b, i) =>
@@ -119,6 +156,7 @@ function pause() {
 }
 function tick(now: number) {
   if (!playing) return;
+  const { duration, fps } = cfg;
   t = Math.min(
     duration,
     source && ac
@@ -134,7 +172,8 @@ function tick(now: number) {
 }
 function play() {
   if (!ready || playing || (logoMode && !logo)) return;
-  if (poster || t >= duration) t = 0;
+  if (logoMode) void warmClatter();
+  if (poster || t >= cfg.duration) t = 0;
   poster = false;
   playing = true;
   try {
@@ -148,9 +187,9 @@ function play() {
       gain.connect(ac.destination);
     }
     gain.gain.value = $<HTMLInputElement>("#mute").checked ? 0 : 1;
-    const key = JSON.stringify([cfg.name, cfg.target, cfg.ending]);
+    const key = JSON.stringify([cfg.name, cfg.target, cfg.ending, cfg.frameCount]);
     if (!buffer || cachedKey !== key) {
-      const [l, r] = soundtrack(cfg);
+      const [l, r] = soundtrack(cfg, clatter);
       buffer = ac.createBuffer(2, l.length, sampleRate);
       buffer.getChannelData(0).set(l);
       buffer.getChannelData(1).set(r);
@@ -180,6 +219,7 @@ function errorState() {
 }
 function update() {
   pause();
+  updateTimeline();
   if (logoMode) {
     if (!logo) return;
     cfg = snapshot({
@@ -251,6 +291,7 @@ function artworkReady() {
   }
   for (const id of ["play", "restart", "export", "match", "part"])
     $<HTMLButtonElement>("#" + id).disabled = empty;
+  scrub.disabled = empty;
 }
 document.querySelectorAll<HTMLInputElement>('input[name="mode"]').forEach(
   (r) =>
@@ -260,6 +301,7 @@ document.querySelectorAll<HTMLInputElement>('input[name="mode"]').forEach(
       if (logoMode) logoDraft = draft();
       else nameDraft = draft();
       logoMode = r.value === "logo";
+      if (logoMode) void warmClatter();
       const d = logoMode ? logoDraft : nameDraft;
       $("#namePanel").hidden = logoMode;
       $("#logoPanel").hidden = !logoMode;
@@ -267,7 +309,7 @@ document.querySelectorAll<HTMLInputElement>('input[name="mode"]').forEach(
       $("#batchLink").hidden = logoMode;
       $<HTMLSelectElement>("#ending").disabled = logoMode;
       $<HTMLSelectElement>("#ending").options[1].text = logoMode
-        ? "Restore full logo"
+        ? "Ceiling crash"
         : "Restore full name";
       $<HTMLSelectElement>("#ending").value = d.ending;
       aspect = d.aspect;
@@ -304,6 +346,8 @@ $("#upload").onchange = async () => {
     $<HTMLSelectElement>("#part").value = String(logoTarget);
     logoLabel = file.name.slice(0, 100);
     logo = next;
+    t = 0;
+    poster = true;
     const quality = "svg" in next
       ? " · Vector artwork"
       : Math.max(next.w, next.h) < 640
@@ -343,13 +387,8 @@ $("#match").onclick = () => {
     $<HTMLInputElement>("#" + k).value = match[k];
   update();
 };
-$("#beats").innerHTML = phases
-  .map(
-    ([k, n], i) =>
-      `<button data-t="${n}" aria-label="Seek to ${k}, ${n} seconds"><i></i><small>${String(i + 1).padStart(2, "0")}</small>${k}</button>`,
-  )
-  .join("");
 $("#beats").onclick = (e) => {
+  if (logoMode && !logo) return;
   const b = (e.target as HTMLElement).closest("button");
   if (b) {
     pause();
@@ -391,8 +430,9 @@ document.querySelectorAll<HTMLButtonElement>("[data-format]").forEach(
 $("#reset").onclick = () => {
   if (logoMode) {
     colors.forEach((k) => ($<HTMLInputElement>("#" + k).value = defaults[k]));
+    $<HTMLInputElement>("#background").value = logoBackdrop;
     aspect = "landscape";
-    t = 4.25;
+    t = 0;
     poster = true;
     update();
     return;
@@ -483,7 +523,7 @@ async function refresh() {
       ? jobs
           .map(
             (j) =>
-              `<article><div><strong>${esc(j.config.name)}</strong><p class="hint">${j.config.aspect} · ${j.config.logo ? `Logo part ${j.config.target + 1}` : `Target ${esc(analyze(j.config.name).chars[j.config.target])}`} · ${j.id.slice(0, 8)}</p></div><div class="job-state">${esc(j.status)}${j.status === "rendering" ? ` · ${j.frames}/${j.config.fps * j.config.duration}` : ""}</div>${["queued", "rendering", "encoding"].includes(j.status) ? `<button data-action="cancel" data-id="${j.id}">Cancel</button>` : j.status === "complete" ? `<a href="/api/download/${j.id}">Download</a>` : `<button data-action="retry" data-id="${j.id}">Retry</button>`}${j.status === "rendering" ? `<progress max="${j.config.fps * j.config.duration}" value="${j.frames}" aria-label="Captured frames"></progress>` : ""}${j.error ? `<p class="error">${esc(j.error)}</p>` : ""}</article>`,
+              `<article><div><strong>${esc(j.config.name)}</strong><p class="hint">${j.config.aspect} · ${j.config.logo ? `Logo part ${j.config.target + 1}` : `Target ${esc(analyze(j.config.name).chars[j.config.target])}`} · ${j.id.slice(0, 8)}</p></div><div class="job-state">${esc(j.status)}${j.status === "rendering" ? ` · ${j.frames}/${j.config.frameCount}` : ""}</div>${["queued", "rendering", "encoding"].includes(j.status) ? `<button data-action="cancel" data-id="${j.id}">Cancel</button>` : j.status === "complete" ? `<a href="/api/download/${j.id}">Download</a>` : `<button data-action="retry" data-id="${j.id}">Retry</button>`}${j.status === "rendering" ? `<progress max="${j.config.frameCount}" value="${j.frames}" aria-label="Captured frames"></progress>` : ""}${j.error ? `<p class="error">${esc(j.error)}</p>` : ""}</article>`,
           )
           .join("")
       : `<div class="empty">${icon("film")}<h3>No render jobs yet</h3><p>Export a scene or add batch names to get started.</p></div>`;

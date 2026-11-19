@@ -11,6 +11,29 @@ export const chapters = [
 ];
 export const steps = [22, 34, 45, 56, 69, 79, 87, 93];
 export const strikes = [145, 156, 167, 180, 200];
+export const logoTiming = Object.freeze({
+  pullback: 0.78,
+  wide: 3.17,
+  arrival: 3.3,
+  spring: 365 / 30,
+  release: 369 / 30,
+  ceilingHit: 379 / 30,
+  ceilingPress: 382 / 30,
+  floorHit: 408 / 30,
+  stand: 416 / 30,
+  upright: 434 / 30,
+  hop: 443 / 30,
+  sideLand: 462 / 30,
+});
+export const logoChapters = [
+  ["Logo", 0],
+  ["Pullback", logoTiming.pullback],
+  ["Arrival", logoTiming.arrival],
+  ["Wind-up", logoTiming.arrival + 111 / 24],
+  ["Strikes", logoTiming.arrival + strikes[0] / 24],
+  ["Ceiling", logoTiming.ceilingHit],
+  ["Recovery", logoTiming.floorHit],
+];
 const clamp = (x) => Math.max(0, Math.min(1, x)),
   ease = (x) => x * x * (3 - 2 * x),
   mix = (a, b, u) => a + (b - a) * u;
@@ -135,9 +158,7 @@ export function evaluate(seconds, duration, s, ending = "replace") {
   }
   const path = [0, 0.1, 0.245, 0.42, 0.61, 0.8, 0.925, 0.984, 1],
     heights = [0.49, 0.64, 0.71, 0.68, 0.83, 0.57, 0.35, 0.14];
-  const depth = s.frontLane
-    ? Array(9).fill(1.1)
-    : [-0.88, -0.88, -0.88, -0.88, -0.88, -0.88, -0.82, -0.59, 0.08];
+  const depth = [-0.88, -0.88, -0.88, -0.88, -0.88, -0.88, -0.82, -0.59, 0.08];
   for (let i = 0; i < steps.length; i++)
     jump(
       i ? steps[i - 1] + 1.8 : 10,

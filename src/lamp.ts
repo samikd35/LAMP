@@ -193,15 +193,16 @@ export function makeLamp(color: string) {
   rim.rotation.x = Math.PI / 2;
   mesh(shade, new T.CylinderGeometry(0.074, 0.083, 0.11, 24), edge, 0, 0.017);
   mesh(shade, new T.CylinderGeometry(0.038, 0.047, 0.055, 16), brass, 0, 0.1);
+  const bulbMaterial = new T.MeshStandardMaterial({
+    color: "#fff2cb",
+    emissive: "#ffd88c",
+    emissiveIntensity: 0.46,
+    roughness: 0.35,
+  });
   const bulb = mesh(
     shade,
     new T.SphereGeometry(0.105, 24, 16),
-    new T.MeshStandardMaterial({
-      color: "#fff2cb",
-      emissive: "#ffd88c",
-      emissiveIntensity: 0.46,
-      roughness: 0.35,
-    }),
+    bulbMaterial,
     0,
     -0.294,
   );
@@ -251,5 +252,5 @@ export function makeLamp(color: string) {
     shade.rotation.y = rad(-neck);
     shade.rotation.z = rad(68 - look);
   }
-  return { root, pose, shade };
+  return { root, pose, shade, rim, bulbMaterial, beam };
 }

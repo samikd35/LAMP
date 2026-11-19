@@ -4,6 +4,9 @@ export const presets = Object.freeze({
   square: [1080, 1080],
   portrait: [1080, 1920],
 });
+const fps = 30;
+export const logoFrameCount = 498;
+export const logoBackdrop = "#faf9f7";
 export const defaults = Object.freeze({
   name: "SAMUEL",
   aspect: "landscape",
@@ -12,7 +15,8 @@ export const defaults = Object.freeze({
   background: "#94a9cf",
   ending: "replace",
   duration: 13,
-  fps: 30,
+  frameCount: 390,
+  fps,
   seed: 0,
 });
 export const logoRasterLimit = 1024;
@@ -81,7 +85,7 @@ export function snapshot(input) {
   if (!Object.hasOwn(presets, aspect)) throw Error("Unknown output format.");
   const colors = Object.fromEntries(
     ["lamp", "text", "background"].map((k) => {
-      const v = input[k] ?? defaults[k];
+      const v = input[k] ?? (logo && k === "background" ? logoBackdrop : defaults[k]);
       if (typeof v !== "string" || !/^#[\da-f]{6}$/i.test(v))
         throw Error(`Invalid ${k} color.`);
       return [k, v];
@@ -89,13 +93,16 @@ export function snapshot(input) {
   );
   const ending = input.ending ?? defaults.ending;
   if (!["replace", "restore"].includes(ending)) throw Error("Unknown ending.");
+  const frameCount = logo ? logoFrameCount : defaults.frameCount;
   return Object.freeze({
     ...defaults,
     ...colors,
     name,
     target,
     aspect,
-    ending,
+    ending: logo ? "restore" : ending,
+    frameCount,
+    duration: frameCount / fps,
     ...(logo && { logo }),
   });
 }
