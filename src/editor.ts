@@ -3,7 +3,7 @@ import { studioScene } from "./scene";
 import { analyze, defaults, logoBackdrop, logoFrameCount, presets, snapshot } from "./config.mjs";
 import { icon } from "./icons";
 import { ceilingClatterUrl, soundtrack, sampleRate } from "./foley.mjs";
-import { automaticLogoTarget, importLogo, inspectLogo, type Logo } from "./logo";
+import { logoImportSummary, automaticLogoTarget, importLogo, inspectLogo, type Logo } from "./logo";
 import { chapters, logoChapters } from "./timeline.mjs";
 const $ = <T extends HTMLElement = HTMLElement>(s: string) =>
   document.querySelector<T>(s)!;
@@ -344,13 +344,7 @@ $("#upload").onchange = async () => {
     logo = next;
     t = 0;
     poster = true;
-    const quality = "svg" in next
-      ? " · Vector artwork"
-      : Math.max(next.w, next.h) < 640
-        ? " · Small image: use a larger PNG or outlined SVG for sharper edges"
-        : "";
-    $("#logoMsg").textContent =
-      `${logoLabel} · ${parts.length} selectable ${parts.length === 1 ? "part" : "parts"}${backgroundRemoved ? " · Solid background removed" : ""}${quality}`;
+    $("#logoMsg").textContent = logoLabel + " · " + logoImportSummary(next, parts.length, backgroundRemoved);
     artworkReady();
     update();
   } catch (e) {

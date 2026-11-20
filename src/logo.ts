@@ -278,6 +278,14 @@ function prepare(asset: Logo) {
   return { raster, vector, parts: placed, source, width, ...colors };
 }
 let last: Logo | undefined, prepared: ReturnType<typeof prepare>;
+export function logoImportSummary(asset: Logo, count: number, backgroundRemoved: boolean) {
+  const details = [count + (count === 1 ? " selectable part" : " selectable parts")];
+  if (backgroundRemoved) details.push("Solid background removed");
+  if ("svg" in asset) details.push("Vector artwork");
+  else if (Math.max(asset.w, asset.h) < 640) details.push("Small image: use a larger PNG or outlined SVG for sharper edges");
+  return details.join(" · ");
+}
+
 export function inspectLogo(asset: Logo) {
   const same = last && ("svg" in asset
     ? "svg" in last && last.svg === asset.svg

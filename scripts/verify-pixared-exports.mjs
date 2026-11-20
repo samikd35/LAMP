@@ -18,10 +18,13 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   await page.goto("chrome://version");
   const executable = (await page.locator("#executable_path").innerText()).trim();
+  // A macOS Chromium executable must stay inside its complete .app bundle.
+  const application = executable.match(/^(.*?\.app)\//)?.[1] ?? executable;
+  const install = path.dirname(application);
   const renderBin = path.join(scratch, "render-browser");
   // Simulate a real recoverable outage in the worker. The UI and job API both run normally.
   server = spawn(process.execPath, ["server/studio.mjs"], {
-    env: { ...process.env, PORT: port, CHROMIUM_PATH: path.join(renderBin, path.basename(executable)) },
+    env: { ...process.env, PORT: port, CHROMIUM_PATH: path.join(renderBin, path.relative(install, executable)) },
     stdio: ["ignore", "pipe", "inherit"],
   });
   await Promise.race([
@@ -88,7 +91,7 @@ try {
   assert.equal(await secondVisitor.getByRole("button", { name: "Retry render" }).count(), 0);
   await secondVisitor.close();
 
-  await symlink(path.dirname(executable), renderBin, process.platform === "win32" ? "junction" : "dir");
+  await symlink(install, renderBin, process.platform === "win32" ? "junction" : "dir");
   await button("Retry render").click();
   await button("Preparing…").waitFor();
   // The saved name is rendering while the visitor edits and plays a different logo draft.

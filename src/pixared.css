@@ -303,3 +303,15 @@ body {
 .px-sheet h1:focus {
   outline: none;
 }
+.px-logo > div {
+  min-width: 0;
+  flex: 1;
+}
+.px-logo span,
+.px-logo small {
+  display: block;
+}
+.px-logo small {
+  font-size: 0.77em;
+  margin-top: 3px;
+}

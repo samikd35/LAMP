@@ -18,7 +18,7 @@ room.panel.innerHTML = `<section class="px-sheet" role="dialog" aria-modal="true
     <div class="px-head"><h1 id="px-title" tabindex="-1">Your name</h1><label class="px-motion"><input type="checkbox"> Room motion</label><button type="button" data-action="close">Close</button></div>
     <div class="px-art">
       <input class="px-name" aria-label="Your name" placeholder="e.g. Sam" spellcheck="false" autocomplete="off" enterkeyhint="go">
-      <div class="px-logo" hidden><img alt=""><span></span><button type="button" data-action="name">Use a name</button></div>
+      <div class="px-logo" hidden><img alt=""><div><span></span><small></small></div><button type="button" data-action="name">Use a name</button></div>
       <input type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" hidden>
       <div class="px-actions"><button type="submit">Play my preview</button><button type="button" data-action="upload">Upload a logo</button></div>
       <div class="px-extras"><button type="button" data-action="saved-logo" hidden>Use saved logo</button><button type="button" data-action="settings" hidden>Film settings</button></div>
@@ -70,6 +70,24 @@ let draft = names,
   busy = false,
   uploadSequence = 0;
 let previewDraft: FilmDraft | undefined;
+let previewConfig: ReturnType<typeof draftConfig> | undefined;
+let playRequest = 0;
+function cancelPendingPreview() {
+  if (!busy) return;
+  ++playRequest;
+  busy = false;
+  film.pause();
+  if (!personal) canvas.hidden = true;
+  setRatio(previewConfig?.aspect ?? "landscape");
+  disableSubmit(false);
+  get(".px-sr").textContent = "";
+}
+function setRatio(aspect: string) {
+  frame.style.setProperty(
+    "--ratio",
+    String(aspect === "portrait" ? 9 / 16 : aspect === "square" ? 1 : 16 / 9),
+  );
+}
 let playing: "playing" | "paused" | "ended" = "ended";
 let sound = false;
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
@@ -97,8 +115,24 @@ function updateTransport() {
       ? "Replay"
       : "Pause";
 }
-function currentConfig() {
-  if (!personal) return undefined;
+function matchesPreview() {
+  if (!previewDraft) return false;
+  return (
+    [
+      "mode",
+      "name",
+      "art",
+      "aspect",
+      "ending",
+      "lamp",
+      "text",
+      "background",
+      "target",
+    ] as const
+  ).every((key) => draft[key] === previewDraft![key]);
+}
+function editedConfig() {
+  if (matchesPreview()) return previewConfig;
   try {
     return draftConfig(draft);
   } catch {
@@ -110,7 +144,8 @@ function updateExport(state: ExportState) {
   const waiting = state.phase === "preparing";
   const retry = state.phase === "failed" && state.canRetry;
   prepare.hidden = ready;
-  prepare.disabled = waiting || (!currentConfig() && !retry);
+  const current = personal ? editedConfig() : undefined;
+  prepare.disabled = waiting || (!current && !retry);
   prepare.textContent = waiting
     ? "Preparing…"
     : retry
@@ -119,7 +154,6 @@ function updateExport(state: ExportState) {
   download.hidden = !ready;
   if (state.downloadUrl) download.href = state.downloadUrl;
   else download.removeAttribute("href");
-  const current = currentConfig();
   const changed =
     !!current && state.phase !== "idle" && !tracker.matches(current);
   newVersion.hidden = !(changed && (ready || state.phase === "failed"));
@@ -130,10 +164,18 @@ function updateExport(state: ExportState) {
   ]
     .filter(Boolean)
     .join(" · ");
-  exportNote.hidden = state.phase === "idle";
+  const edited = state.phase === "idle" && current && !matchesPreview();
+  if (edited)
+    get("span", exportNote).textContent =
+      "Prepare MP4 will use the edited film · " +
+      current.name +
+      " · " +
+      current.aspect;
+  exportNote.hidden = state.phase === "idle" && !edited;
   if (!sheet.hidden) get(".px-sr").textContent = state.message;
 }
 function setDraft(next: FilmDraft) {
+  cancelPendingPreview();
   draft = next;
   settings = false;
   nameInput.value = names.name;
@@ -143,6 +185,7 @@ function setDraft(next: FilmDraft) {
   if (logos.art) {
     get<HTMLImageElement>("img", card).src = logos.art.thumbnail;
     get("span", card).textContent = logos.art.name;
+    get("small", card).textContent = logos.art.description;
   }
   action("saved-logo").hidden = draft !== names || !logos.art;
   action("settings").hidden = !personal;
@@ -199,6 +242,7 @@ function openPanel(advanced = false) {
   (advanced ? target : title).focus({ preventScroll: true });
 }
 function closePanel(focus: HTMLElement = edit) {
+  cancelPendingPreview();
   uploadSequence++;
   cancelUpload();
   for (const el of inerted.splice(0)) el.inert = false;
@@ -266,7 +310,12 @@ action("name").onclick = () => {
   setDraft(names);
   nameInput.focus();
 };
-action("saved-logo").onclick = () => setDraft(logos);
+action("saved-logo").onclick = () => {
+  uploadSequence++;
+  cancelUpload();
+  setDraft(logos);
+  title.focus();
+};
 action("art").onclick = () => {
   settings = false;
   displayEditor();
@@ -322,6 +371,9 @@ fileInput.onchange = async () => {
     logos.art = art;
     logos.target = undefined;
     setDraft(logos);
+    get(".px-sr").textContent =
+      art.name + " is ready to preview. " + art.description;
+    get<HTMLButtonElement>('.px-art button[type="submit"]').focus();
     action("upload").textContent = "Upload a logo";
   } catch (e) {
     if (seq !== uploadSequence) return;
@@ -335,9 +387,12 @@ fileInput.onchange = async () => {
 };
 async function playDraft() {
   if (busy) return;
+  const submitted = { ...draft };
   let cfg: ReturnType<typeof draftConfig>;
   try {
-    cfg = draftConfig(draft);
+    if (submitted.mode === "name" && !submitted.name.trim())
+      throw Error("Enter your name to play the preview.");
+    cfg = draftConfig(submitted);
   } catch (e) {
     showMessage(e instanceof Error ? e.message : "Check the artwork.");
     if (draft.mode === "name") {
@@ -347,31 +402,45 @@ async function playDraft() {
     }
     return;
   }
+  const request = ++playRequest;
   busy = true;
   disableSubmit(true);
+  get(".px-sr").textContent = "Opening preview…";
   try {
-    const ratio =
-      cfg.aspect === "portrait" ? 9 / 16 : cfg.aspect === "square" ? 1 : 16 / 9;
-    frame.style.setProperty("--ratio", String(ratio));
+    setRatio(cfg.aspect);
     canvas.hidden = false;
     video.pause();
     await film.play(cfg);
+    if (request !== playRequest) return;
+    busy = false;
     personal = true;
-    previewDraft = { ...draft };
+    previewDraft = submitted;
+    previewConfig = cfg;
     video.hidden = true;
     updateTransport();
     updateExport(tracker.state);
     closePanel(transport);
   } catch (e) {
+    if (request !== playRequest) return;
+    setRatio(previewConfig?.aspect ?? "landscape");
     if (!personal) canvas.hidden = true;
     showMessage(
       e instanceof Error ? e.message : "The preview could not start.",
     );
   } finally {
-    busy = false;
-    disableSubmit(false);
+    if (request === playRequest) {
+      busy = false;
+      disableSubmit(false);
+    }
   }
 }
+sheet.addEventListener(
+  "input",
+  (e) => {
+    if (e.target !== motion) cancelPendingPreview();
+  },
+  true,
+);
 get<HTMLFormElement>("form").onsubmit = (e) => {
   e.preventDefault();
   void playDraft();
@@ -380,12 +449,7 @@ canvas.onclick = async (e) => {
   if (!previewDraft || !sheet.hidden || busy) return;
   const index = film.pick(e);
   if (index < 0) return;
-  if (
-    (Object.keys(previewDraft) as (keyof FilmDraft)[]).some(
-      (key) => draft[key] !== previewDraft![key],
-    ) ||
-    draft.target !== previewDraft.target
-  ) {
+  if (!matchesPreview()) {
     openPanel();
     showMessage(
       "Play your edited film before choosing a landing on the picture.",
@@ -409,8 +473,8 @@ transport.onclick = async () => {
   }
 };
 function prepareCurrent() {
-  const cfg = currentConfig();
-  if (cfg) void tracker.prepare(cfg);
+  const current = editedConfig();
+  if (current) void tracker.prepare(current);
 }
 prepare.onclick = () => {
   if (tracker.state.phase === "failed" && tracker.state.canRetry)

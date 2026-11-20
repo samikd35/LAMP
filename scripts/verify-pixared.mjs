@@ -78,6 +78,29 @@ try {
     await page.evaluate(() => document.activeElement.textContent),
     "Edit",
   );
+  const slow = await browser.newPage();
+  await slow.goto(origin);
+  const form = slow.getByRole("dialog");
+  const input = form.getByRole("textbox", { name: "Your name" });
+  await input.fill("Sam");
+  const loading = slow.waitForRequest((req) => req.resourceType() === "script", { timeout: 10000 });
+  const release = Promise.withResolvers();
+  await slow.route("**/*", async (route) => {
+    if (route.request().resourceType() === "script") {
+      await release.promise;
+    }
+    await route.continue();
+  });
+  await form.getByRole("button", { name: "Play my preview" }).click();
+  await loading;
+  await input.fill("Ada");
+  release.resolve();
+  await slow.waitForLoadState("networkidle");
+  assert(await form.isVisible());
+  assert.equal(await input.inputValue(), "Ada");
+  await form.getByRole("button", { name: "Play my preview" }).click();
+  await slow.getByRole("button", { name: "Pause", exact: true }).waitFor();
+  await slow.close();
   await page.goto(origin + "/studio.html");
   assert.equal(await page.title(), "Lamp Name Studio");
   console.log(

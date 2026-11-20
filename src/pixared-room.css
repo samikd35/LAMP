@@ -1,12 +1,15 @@
 .pixared-room {
   --case: min(55vw, 88svh);
-  --case-height: .7156;
-  --case-top: max(calc((100svh - var(--case) * var(--case-height)) / 2), calc(var(--case) * .21));
-  --panel-y: .593;
-  --film-y: .067;
-  --film-h: .50;
-  --knob-y: .124;
-  --knob-two-y: .263;
+  --case-height: 0.7156;
+  --case-top: max(
+    calc((100svh - var(--case) * var(--case-height)) / 2),
+    calc(var(--case) * 0.21)
+  );
+  --panel-y: 0.593;
+  --film-y: 0.067;
+  --film-h: 0.5;
+  --knob-y: 0.124;
+  --knob-two-y: 0.263;
   display: flow-root;
   box-sizing: border-box;
   position: relative;
@@ -15,44 +18,249 @@
   padding-bottom: 14px;
   overflow-x: clip;
   color: #2c2116;
-  background: #705c38 url('/pixared-room/wall.webp') center/370px auto repeat;
+  background: #705c38 url("/pixared-room/wall.webp") center/370px auto repeat;
   font-family: system-ui, sans-serif;
 }
-.pixared-room *, .pixared-room *::before, .pixared-room *::after {box-sizing:border-box}
-.px-scenery {position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:-1}
-.px-origin, .px-controls {width:var(--case); margin-inline:auto; position:relative; margin-top:var(--case-top)}
-.px-origin {height:calc(var(--case) * var(--case-height))}
-.px-plate {position:absolute; width:178.60%; max-width:none; height:auto; left:-39.41%; top:calc(var(--case) * -.2117); user-select:none}
-.px-geometry {position:absolute; left:0; top:calc(var(--case) * -.29); width:100%; height:calc(var(--case) * 1.15); pointer-events:none}
-.px-clock-mask {position:absolute; left:0; bottom:100%; width:100%; height:30%; overflow:hidden}
-.px-hand {position:absolute; left:49.78%; bottom:calc(var(--case) * .052); width:1.3px; height:calc(var(--case)*.105); transform-origin:50% 100%; background:#98623a; animation:px-clock 60s linear infinite; box-shadow:1px 0 1px #3a22183d}
-@keyframes px-clock {to{transform:rotate(360deg)}}
-.pixared-room[data-clock='paused'] .px-hand {animation-play-state:paused}
-.px-controls {min-height:calc(var(--case)*var(--case-height)); padding-top:calc(var(--case)*var(--panel-y))}
-.px-screen {position:absolute; display:grid; place-items:center; left:6.65%; top:calc(var(--case)*var(--film-y)); width:73.75%; height:calc(var(--case)*var(--film-h)); overflow:hidden; isolation:isolate; border-radius:5% / 7%; background:#090a09}
-.px-source, .px-dial {position:absolute; display:block; padding:0; border:0; appearance:none; background:transparent; cursor:pointer; color:inherit; min-height:44px; min-width:44px; touch-action:manipulation}
-.px-source {left:99.7%; top:calc(var(--case)*-.102); width:20.6%; height:calc(var(--case)*.084); border-radius:30px}
-.px-dial {left:90.15%; width:10.5%; height:calc(var(--case)*.107); transform:translate(-50%,-50%); border-radius:50%; z-index:1}
-.px-landing {top:calc(var(--case)*var(--knob-y))}.px-sound{top:calc(var(--case)*var(--knob-two-y))}
-.px-dial::after {content:attr(title); position:absolute; bottom:-16px; left:50%; transform:translateX(-50%); padding:3px 6px; border-radius:3px; background:#30251a; color:#fff1cf; font-size:12px; white-space:nowrap; opacity:0; pointer-events:none}
-.px-dial:focus-visible::after {opacity:1}
-@media (hover:hover){.px-dial:hover::after{opacity:1}}
-.pixared-room :is(button,a,input,select,summary):focus-visible {outline:3px solid #ffeab7; outline-offset:3px; box-shadow:0 0 0 5px #51361c}
-.px-fascia {position:absolute; display:flex; gap:2%; align-items:center; justify-content:space-around; left:3.5%; top:calc(var(--case)*.605); width:93%; min-height:calc(var(--case)*.072)}
-.px-fascia>button {font:600 clamp(14px,1.22vw,21px)/1.1 system-ui,sans-serif; min-height:44px; min-width:44px; padding:6px clamp(9px,1.7vw,28px); border-radius:6px; color:#30251c; background:linear-gradient(115deg,#f9dfad,#f5cc94 49%,#deb175); border:1px solid #9d6235; box-shadow:inset 0 2px 2px #fff1ce,inset 0 -3px 2px #b27a44,0 2px 4px #30190a; cursor:pointer}
-.px-fascia>button:active{transform:translateY(1px)}
-.px-panel {position:relative; width:84%; margin-inline:auto; background:linear-gradient(105deg,#f7e5c6,#fff3dc 49%,#f1dcbb); border:7px solid #9e6030; border-radius:9px; box-shadow:inset 0 0 0 1px #c7a67c,0 2px 0 #6d3414,0 6px 0 #7b451f,0 11px 12px #321b08a8; border-image:url('/pixared-room/walnut.webp') 3 / 5px stretch; transform-origin:50% 0}
-.px-panel::before,.px-panel::after{content:'';position:absolute;top:-14px;width:7%;height:clamp(10px,1.4vw,21px);min-width:25px;background:url('/pixared-room/hinge.webp') center/100% 100% no-repeat;pointer-events:none;z-index:1}
-.px-panel::before{left:10%}.px-panel::after{right:10%}
-.pixared-room [hidden]{display:none!important}
-@media(max-width:650px) and (orientation:portrait){
- .pixared-room {--case: min(calc(100vw - 16px),560px);--case-height:.765;--case-top:max(calc((100svh - var(--case)*var(--case-height))/2),calc(var(--case)*.32));--panel-y:.635;--film-y:.056;--film-h:.55;--knob-y:.14;--knob-two-y:.287}
- .px-plate {width:104.87%;left:-2.14%;top:calc(var(--case)*-.541)}
- .px-screen {left:6.15%}
- .px-source {left:70.7%;top:calc(var(--case)*-.414);width:28.5%;height:calc(var(--case)*.13)}
- .px-clock-mask{height:42%}.px-hand{left:50.2%;bottom:calc(var(--case)*.09);height:calc(var(--case)*.119);width:1px}
- .px-panel {width:97%;border-width:5px}
- .px-fascia {top:calc(var(--case)*.646);left:3.2%;width:93.6%}
- .px-fascia>button{font-size:14px;padding:5px 9px}
+.pixared-room *,
+.pixared-room *::before,
+.pixared-room *::after {
+  box-sizing: border-box;
 }
-@media(prefers-reduced-motion:reduce){.px-hand{animation-play-state:paused}}
+.px-scenery {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+.px-origin,
+.px-controls {
+  width: var(--case);
+  margin-inline: auto;
+  position: relative;
+  margin-top: var(--case-top);
+}
+.px-origin {
+  height: calc(var(--case) * var(--case-height));
+}
+.px-plate {
+  position: absolute;
+  width: 178.6%;
+  max-width: none;
+  height: auto;
+  left: -39.41%;
+  top: calc(var(--case) * -0.2117);
+  user-select: none;
+}
+.px-geometry {
+  position: absolute;
+  left: 0;
+  top: calc(var(--case) * -0.29);
+  width: 100%;
+  height: calc(var(--case) * 1.15);
+  pointer-events: none;
+}
+.px-clock-mask {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  width: 100%;
+  height: 30%;
+  overflow: hidden;
+}
+.px-hand {
+  position: absolute;
+  left: 49.78%;
+  bottom: calc(var(--case) * 0.052);
+  width: 1.3px;
+  height: calc(var(--case) * 0.105);
+  transform-origin: 50% 100%;
+  background: #98623a;
+  animation: px-clock 60s linear infinite;
+  box-shadow: 1px 0 1px #3a22183d;
+}
+@keyframes px-clock {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.pixared-room[data-clock="paused"] .px-hand {
+  animation-play-state: paused;
+}
+.px-controls {
+  min-height: calc(var(--case) * var(--case-height));
+  padding-top: calc(var(--case) * var(--panel-y));
+}
+.px-screen {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  left: 6.65%;
+  top: calc(var(--case) * var(--film-y));
+  width: 73.75%;
+  height: calc(var(--case) * var(--film-h));
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 5% / 7%;
+  background: transparent;
+}
+.px-source,
+.px-dial {
+  position: absolute;
+  display: block;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+.px-source {
+  left: 99.7%;
+  top: calc(var(--case) * -0.102);
+  width: 20.6%;
+  height: calc(var(--case) * 0.084);
+  border-radius: 30px;
+}
+.px-dial {
+  left: 90.15%;
+  width: 10.5%;
+  height: calc(var(--case) * 0.107);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 1;
+}
+.px-landing {
+  top: calc(var(--case) * var(--knob-y));
+}
+.px-sound {
+  top: calc(var(--case) * var(--knob-two-y));
+}
+.px-dial::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #30251a;
+  color: #fff1cf;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+.px-dial:focus-visible::after {
+  opacity: 1;
+}
+@media (hover: hover) {
+  .px-dial:hover::after {
+    opacity: 1;
+  }
+}
+.pixared-room :is(button, a, input, select, summary):focus-visible {
+  outline: 3px solid #ffeab7;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px #51361c;
+}
+.px-fascia {
+  position: absolute;
+  display: flex;
+  gap: 2%;
+  align-items: center;
+  justify-content: space-around;
+  left: 3.5%;
+  top: calc(var(--case) * 0.605);
+  width: 93%;
+  min-height: calc(var(--case) * 0.072);
+}
+/* Use the exact wood edge of the open door. Its inner surface carries native form fields. */
+.px-panel {
+  position: relative;
+  width: 86%;
+  margin-inline: auto;
+  padding: clamp(11px, 1.1vw, 19px) 7.4% clamp(13px, 1.5vw, 23px);
+  transform-origin: 50% 0;
+  isolation: isolate;
+  filter: drop-shadow(0 7px 5px #3018078a);
+}
+.px-panel {
+  background: url("/pixared-room/flap.webp") center / 100% 100% no-repeat;
+}
+.px-panel::before,
+.px-panel::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  width: 7%;
+  height: clamp(10px, 1.4vw, 21px);
+  min-width: 25px;
+  background: url("/pixared-room/hinge.webp") center/100% 100% no-repeat;
+  pointer-events: none;
+  z-index: 1;
+}
+.px-panel::before {
+  left: 10%;
+}
+.px-panel::after {
+  right: 10%;
+}
+.pixared-room [hidden] {
+  display: none !important;
+}
+@media (max-width: 500px), (max-width: 650px) and (orientation: portrait) {
+  .pixared-room {
+    --case: min(calc(100vw - 16px), 560px);
+    --case-height: 0.765;
+    --case-top: max(
+      calc((100svh - var(--case) * var(--case-height)) / 2),
+      calc(var(--case) * 0.32)
+    );
+    --panel-y: 0.635;
+    --film-y: 0.056;
+    --film-h: 0.55;
+    --knob-y: 0.14;
+    --knob-two-y: 0.287;
+  }
+  .px-plate {
+    width: 104.87%;
+    left: -2.14%;
+    top: calc(var(--case) * -0.541);
+  }
+  .px-screen {
+    left: 6.15%;
+  }
+  .px-source {
+    left: 70.7%;
+    top: calc(var(--case) * -0.414);
+    width: 28.5%;
+    height: calc(var(--case) * 0.13);
+  }
+  .px-clock-mask {
+    height: 42%;
+  }
+  .px-hand {
+    left: 50.2%;
+    bottom: calc(var(--case) * 0.09);
+    height: calc(var(--case) * 0.119);
+    width: 1px;
+  }
+  .px-panel {
+    width: 86%;
+    padding: 10px 7.2% 15px;
+  }
+  .px-fascia {
+    top: calc(var(--case) * 0.646);
+    left: 3.2%;
+    width: 93.6%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .px-hand {
+    animation-play-state: paused;
+  }
+}

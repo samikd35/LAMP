@@ -9,6 +9,7 @@ export type PreparedLogo = {
   name: string;
   asset: Logo;
   thumbnail: string;
+  description: string;
   targets: TargetOption[];
   auto: number;
   lamp: string;
@@ -35,8 +36,8 @@ export function createDraft(mode: FilmMode): FilmDraft {
 }
 
 export async function prepareLogo(file: File): Promise<PreparedLogo> {
-  const { automaticLogoTarget, importLogo, inspectLogo } = await import("./logo");
-  const { asset } = await importLogo(file);
+  const { automaticLogoTarget, importLogo, inspectLogo, logoImportSummary } = await import("./logo");
+  const { asset, backgroundRemoved } = await importLogo(file);
   const { parts, lamp, background } = inspectLogo(asset);
   const thumbnail = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -46,6 +47,7 @@ export async function prepareLogo(file: File): Promise<PreparedLogo> {
   });
   return {
     name: file.name.slice(0, 100), asset, thumbnail, lamp, background,
+    description: logoImportSummary(asset, parts.length, backgroundRemoved),
     auto: automaticLogoTarget(parts),
     targets: parts.map((_, i) => ({ value: i, label: `Part ${i + 1}` })),
   };
@@ -191,9 +193,8 @@ export function createFilm(
     const order = ++revision;
     cancelAnimationFrame(frameRequest);
     stopAudio();
+    time = clock();
     state = "paused";
-    config = next;
-    time = at;
     // Resume on the user's gesture while the scene module is loading.
     if (sound) {
       try {
@@ -203,6 +204,8 @@ export function createFilm(
     }
     const { studioScene } = await import("./scene");
     if (order !== revision) return;
+    config = next;
+    time = at;
     scene ??= studioScene(canvas);
     if (configured !== next) {
       scene.configure(next);

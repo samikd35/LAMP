@@ -29,6 +29,7 @@ try {
   await dialog.getByLabel("Your name", { exact: true }).fill("Zoë");
   await upload("examples/logos/NOVA.svg");
   await dialog.getByText("NOVA.svg", { exact: true }).waitFor();
+  assert.match(await dialog.textContent(), /4 selectable parts.*Vector artwork/);
   await page.waitForFunction(() => document.querySelector('[role="dialog"] img')?.naturalWidth > 0);
   await upload({ name: "bad.png", mimeType: "image/png", buffer: Buffer.from("Not artwork") });
   await button("Choose another file").waitFor();

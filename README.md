@@ -121,6 +121,10 @@ The worker makes a stereo WAV from the same mix used for preview, including the 
 | Browser editor and frame capture | [`src/editor.ts`](src/editor.ts) · [`src/render.ts`](src/render.ts) |
 | Local service, queue, and encoder | [`server/studio.mjs`](server/studio.mjs) · [`server/queue.mjs`](server/queue.mjs) · [`server/worker.mjs`](server/worker.mjs) |
 
+## Verify Pixared
+
+With the built app running, set `PIXARED_URL` to its local address and run `node scripts/verify-pixared.mjs` and `node scripts/verify-pixared-artwork.mjs`. These checks exercise the public controls, retain phone and desktop screenshots, and cover both artwork types. Run `node scripts/verify-pixared-exports.mjs` to exercise render failure, retry and real MP4 downloads on a separate local service.
+
 ## Verify the studio
 
 ```sh
