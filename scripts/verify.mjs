@@ -36,7 +36,7 @@ try {
     viewport: { width: 1366, height: 900 },
   });
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(origin);
+  await page.goto(origin + "/studio.html");
   await page.waitForSelector("#loading[hidden]", { state: "attached" });
   const seek = async (t) =>
     page.locator("#scrub").evaluate((e, t) => {

@@ -25,7 +25,7 @@ try {
   const p = await browser.newPage({ viewport: { width: 1440, height: 960 } }),
     errors = [];
   p.on("pageerror", (e) => errors.push(e.message));
-  await p.goto(origin);
+  await p.goto(origin + "/studio.html");
   await p.waitForSelector("#loading[hidden]", { state: "attached" });
   const seek = async (t) =>
     p.locator("#scrub").evaluate((el, t) => {

@@ -20,7 +20,7 @@ npx playwright install chromium
 npm start
 ```
 
-Open **<http://127.0.0.1:4173>**. `npm start` type-checks and builds both browser pages before starting the loopback server. Keep the server running until exports finish. You can close the editor tab while a job renders. Set `PORT` to use a different port.
+Open [Pixared](http://127.0.0.1:4173) for the public TV experience. Use the [Studio editor](http://127.0.0.1:4173/studio.html) for the timeline, batch tools and render queue. `npm start` type-checks and builds the browser pages before starting the loopback server. Keep the server running until exports finish. You can close the editor tab while a job renders. Set `PORT` to use a different port.
 
 ## Make a film
 

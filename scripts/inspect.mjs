@@ -8,7 +8,7 @@ const tmp = await mkdtemp("outputs/inspection-"),
   browser = await openBrowser();
 try {
   const p = await browser.newPage({ viewport: { width: 1200, height: 850 } });
-  await p.goto(origin);
+  await p.goto(origin + "/studio.html");
   await p.waitForSelector("#loading[hidden]", { state: "attached" });
   const cases = [
     ["I", "landscape", 8.01],

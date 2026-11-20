@@ -20,6 +20,9 @@ const mime = {
   ".js": "text/javascript",
   ".css": "text/css",
   ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".jpg": "image/jpeg",
+  ".png": "image/png",
   ".woff2": "font/woff2",
   ".mp4": "video/mp4",
 };

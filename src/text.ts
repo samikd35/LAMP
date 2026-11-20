@@ -32,11 +32,13 @@ export function makeText(name: string, target: number, color: string) {
       });
       // Each letter is a freestanding casting. A descending J or y must not
       // lift the neighboring castings; punctuation retains its font elevation.
-      if (/^\p{L}/u.test(ch)) {
+      const isLetter = /^\p{L}/u.test(ch);
+      if (isLetter) {
         geometry.computeBoundingBox();
         geometry.translate(0, -geometry.boundingBox!.min.y, 0);
       }
       const mesh = new T.Mesh(geometry, material);
+      if (isLetter) mesh.userData.letterIndex = i;
       mesh.position.x = cursor;
       mesh.castShadow = mesh.receiveShadow = true;
       group.add(mesh);

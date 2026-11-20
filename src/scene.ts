@@ -318,19 +318,23 @@ export function studioScene(canvas: HTMLCanvasElement) {
   function resize(w: number, h: number) {
     renderer.setSize(w, h, false);
   }
+  function pickTarget(x: number, y: number) {
+    if (!word) return -1;
+    const ray = new T.Raycaster();
+    ray.setFromCamera(new T.Vector2(x, y), logoPerformance?.camera ?? camera);
+    const hit = ray.intersectObjects(word.group.children.filter((part) => part.visible))[0];
+    if (!hit) return -1;
+    let part = hit.object;
+    while (part.parent && part.parent !== word.group) part = part.parent;
+    return logoPerformance ? word.group.children.indexOf(part) : (part.userData.letterIndex ?? -1);
+  }
   return {
     configure,
     clearance: () => clearance && { before: clearance.originalScore, after: clearance.score, scale: clearance.scale },
     pickLogoPart(x: number, y: number) {
-      if (!logoPerformance) return -1;
-      const ray = new T.Raycaster();
-      ray.setFromCamera(new T.Vector2(x, y), logoPerformance.camera);
-      const hit = ray.intersectObjects(word.group.children.filter((p) => p.visible))[0];
-      if (!hit) return -1;
-      let part = hit.object;
-      while (part.parent && part.parent !== word.group) part = part.parent;
-      return word.group.children.indexOf(part);
+      return logoPerformance ? pickTarget(x, y) : -1;
     },
+    pickTarget,
     draw,
     resize,
     warm: () => renderer.compileAsync(scene, logoPerformance?.camera ?? camera),

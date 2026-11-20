@@ -3,7 +3,7 @@ import { studioScene } from "./scene";
 import { analyze, defaults, logoBackdrop, logoFrameCount, presets, snapshot } from "./config.mjs";
 import { icon } from "./icons";
 import { ceilingClatterUrl, soundtrack, sampleRate } from "./foley.mjs";
-import { importLogo, inspectLogo, type Logo } from "./logo";
+import { automaticLogoTarget, importLogo, inspectLogo, type Logo } from "./logo";
 import { chapters, logoChapters } from "./timeline.mjs";
 const $ = <T extends HTMLElement = HTMLElement>(s: string) =>
   document.querySelector<T>(s)!;
@@ -335,11 +335,7 @@ $("#upload").onchange = async () => {
     const { asset: next, backgroundRemoved } = await importLogo(file);
     if (version !== uploadVersion) return;
     const { parts } = inspectLogo(next);
-    logoTarget = parts.reduce(
-      (best, p, i) =>
-        Math.abs(p.crown) < Math.abs(parts[best].crown) ? i : best,
-      0,
-    );
+    logoTarget = automaticLogoTarget(parts);
     parts.forEach((_, i) =>
       $<HTMLSelectElement>("#part").add(new Option(`Part ${i + 1}`, String(i))),
     );

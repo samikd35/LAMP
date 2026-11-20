@@ -1,0 +1,305 @@
+html {
+  color-scheme: light;
+  background: #675535;
+}
+body {
+  margin: 0;
+}
+.px-frame {
+  --ratio: 1.7777778;
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: min(100cqw, calc(100cqh * var(--ratio)));
+  height: auto;
+  aspect-ratio: var(--ratio);
+  max-height: 100%;
+}
+.px-frame canvas,
+.px-frame video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+.px-sheet [hidden],
+.px-frame [hidden],
+.px-keys [hidden],
+.px-export-note[hidden],
+.px-sheet[hidden],
+.px-export-note [hidden] {
+  display: none !important;
+}
+.px-sheet,
+.px-keys,
+.px-export-note {
+  font:
+    500 clamp(14px, 1.12vw, 17px)/1.18 "Arial",
+    sans-serif;
+  color: #342417;
+  box-sizing: border-box;
+}
+.px-sheet *,
+.px-keys * {
+  box-sizing: border-box;
+}
+.px-sheet form {
+  margin: 0;
+}
+.px-sheet h1 {
+  font:
+    700 clamp(16px, 1.6vw, 23px)/1.1 Arial,
+    sans-serif;
+  margin: 0;
+  outline-offset: 2px;
+}
+.px-head {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 1vw, 15px);
+}
+.px-head h1 {
+  margin-right: auto;
+}
+.px-sheet button,
+.px-keys button,
+.px-keys a,
+.px-export-note button,
+.px-sheet input,
+.px-sheet select {
+  font: inherit;
+}
+.px-sheet button,
+.px-keys button,
+.px-keys a,
+.px-export-note button {
+  cursor: pointer;
+  min-height: 44px;
+  color: inherit;
+}
+.px-head button,
+.px-extras button,
+.px-logo button,
+.px-settings > button {
+  border: 0;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0 3px;
+}
+.px-head button {
+  text-decoration: none;
+  font-weight: bold;
+}
+.px-motion {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.82em;
+}
+.px-motion input {
+  appearance: none;
+  cursor: pointer;
+  width: 27px;
+  height: 15px;
+  border-radius: 14px;
+  margin: 0;
+  border: 1px solid #766449;
+  background:
+    radial-gradient(circle at 7px 50%, #fff2cf 0 5px, transparent 6px), #777064;
+}
+.px-motion input:checked {
+  background:
+    radial-gradient(circle at 19px 50%, #fff2cf 0 5px, transparent 6px), #78633f;
+}
+.px-name,
+.px-settings select {
+  width: 100%;
+  border: 1px solid #a69273;
+  background: #fff7e4;
+  border-radius: 5px;
+  padding: 6px 11px;
+  min-height: 44px;
+  color: #302519;
+  box-shadow: inset 0 1px 2px #54361320;
+}
+.px-sheet .px-name {
+  font-size: max(16px, 1em);
+}
+.px-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.px-actions button {
+  background: linear-gradient(#634730, #46301e);
+  color: #fff2df;
+  border-radius: 6px;
+  border: 1px solid #3e2a19;
+  box-shadow: 0 2px 0 #2f2118;
+  font-weight: 650;
+  padding: 5px;
+}
+.px-sheet button:disabled,
+.px-keys button:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+.px-sheet :focus-visible,
+.px-keys :focus-visible,
+.px-export-note :focus-visible {
+  outline: 3px solid #17567c;
+  outline-offset: 2px;
+}
+.px-logo {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 8px;
+}
+.px-logo img {
+  height: 40px;
+  width: 52px;
+  object-fit: contain;
+  background: #fff9e9;
+  border-radius: 4px;
+}
+.px-logo span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.px-extras {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.px-settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+.px-settings > label {
+  display: grid;
+  gap: 2px;
+  font-size: 0.85em;
+}
+.px-settings .px-actions,
+.px-paints {
+  grid-column: 1/-1;
+}
+.px-paints {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.px-paints label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85em;
+}
+.px-paints input {
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.px-error {
+  margin: 5px 0 0;
+  color: #752c1b;
+  font-size: 0.85em;
+}
+.px-error:empty {
+  display: none;
+}
+.px-keys {
+  position: relative;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  gap: 4px;
+}
+.px-keys button,
+.px-keys a {
+  background: linear-gradient(#ffe4a9, #e3af6e);
+  border: 1px solid #895325;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px 1px #fff2bd,
+    0 2px 2px #462308;
+  color: #2b1c0f;
+  font-weight: 700;
+  padding: 4px clamp(7px, 1.4vw, 24px);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  white-space: nowrap;
+}
+.px-export-note {
+  position: absolute;
+  z-index: 2;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 100%;
+  margin-top: 6px;
+  padding: 7px 12px;
+  border: 1px solid #765b3a;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px #36261255;
+  background: #faedcf;
+  font-size: 13px;
+  text-align: center;
+}
+.px-export-note button {
+  display: block;
+  margin: auto;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+}
+@media (max-width: 500px) {
+  .px-head {
+    gap: 5px;
+  }
+  .px-sheet,
+  .px-keys {
+    font-size: 14px;
+  }
+  .px-actions {
+    gap: 5px;
+  }
+  .px-head h1 {
+    font-size: 16px;
+  }
+  .px-settings {
+    gap: 4px;
+  }
+}
+.px-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* The heading receives focus for dialog announcements; Tab moves to visible controls. */
+.px-sheet h1:focus {
+  outline: none;
+}

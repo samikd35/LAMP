@@ -289,6 +289,11 @@ export function inspectLogo(asset: Logo) {
   return prepared;
 }
 
+export function automaticLogoTarget(parts: readonly { crown: number }[]) {
+  return parts.reduce((best, part, i) =>
+    Math.abs(part.crown) < Math.abs(parts[best].crown) ? i : best, 0);
+}
+
 export function makeLogo(asset: Logo, index: number) {
   const { raster, vector, parts, source, width } = inspectLogo(asset),
     part = parts[index];
