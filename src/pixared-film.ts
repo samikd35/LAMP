@@ -168,7 +168,7 @@ export function createFilm(
     const [w, h] = presets[configured.aspect as keyof typeof presets];
     const pixels = Math.max(1, Math.min(w, Math.round(width * Math.min(devicePixelRatio, 2))));
     scene.resize(pixels, Math.max(1, Math.round(pixels * h / w)));
-    scene.draw(time);
+    scene.draw(configured === config ? time : 4.25);
   }
 
   function tick() {
@@ -228,6 +228,25 @@ export function createFilm(
   document.addEventListener("visibilitychange", visibility);
 
   return {
+    async showDraft(next: Config) {
+      pause();
+      const order = revision;
+      const { studioScene } = await import("./scene");
+      if (order !== revision || disposed) return false;
+      scene ??= studioScene(canvas);
+      scene.configure(next);
+      configured = next;
+      resize();
+      return true;
+    },
+    restorePreview() {
+      revision++;
+      if (scene && config && configured !== config) {
+        scene.configure(config);
+        configured = config;
+        resize();
+      }
+    },
     play: (next: Config) => startFrom(next, 0),
     pause,
     async resume() {

@@ -41,6 +41,12 @@ try {
       await dialog.getByRole("heading", { name: "Your name" }).isVisible(),
     );
   }
+  // Focusing the field hydrates the cabinet. Its photographed tuner must stay visible.
+  const tuner = page.locator(".px-landing");
+  const beforeFocus = await tuner.screenshot();
+  await dialog.getByLabel("Your name", { exact: true }).click();
+  await page.waitForLoadState("networkidle");
+  assert.ok(beforeFocus.equals(await tuner.screenshot()), "Cabinet darkened on focus");
   await page.setViewportSize({ width: 360, height: 360 });
   const upload = dialog.getByRole("button", { name: "Upload a logo" });
   await upload.scrollIntoViewIfNeeded();
@@ -82,7 +88,6 @@ try {
   await slow.goto(origin);
   const form = slow.getByRole("dialog");
   const input = form.getByRole("textbox", { name: "Your name" });
-  await input.fill("Sam");
   const loading = slow.waitForRequest((req) => req.resourceType() === "script", { timeout: 10000 });
   const release = Promise.withResolvers();
   await slow.route("**/*", async (route) => {
@@ -91,13 +96,23 @@ try {
     }
     await route.continue();
   });
-  await form.getByRole("button", { name: "Play my preview" }).click();
+  await input.fill("Sam");
   await loading;
+  await form.getByRole("button", { name: "Play my preview" }).click();
   await input.fill("Ada");
   release.resolve();
   await slow.waitForLoadState("networkidle");
   assert(await form.isVisible());
   assert.equal(await input.inputValue(), "Ada");
+  const screen = slow.getByLabel("Your film preview", { exact: true });
+  await screen.waitFor();
+  const ada = await screen.screenshot();
+  await input.fill("Luna");
+  await slow.waitForTimeout(100);
+  assert.ok(!ada.equals(await screen.screenshot()), "Typing changes the film before Play");
+  await input.fill("");
+  await screen.waitFor({ state: "hidden" });
+  await input.fill("Ada");
   await form.getByRole("button", { name: "Play my preview" }).click();
   await slow.getByRole("button", { name: "Pause", exact: true }).waitFor();
   await slow.close();

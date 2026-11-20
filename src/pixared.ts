@@ -174,7 +174,31 @@ function updateExport(state: ExportState) {
   exportNote.hidden = state.phase === "idle" && !edited;
   if (!sheet.hidden) get(".px-sr").textContent = state.message;
 }
+let showingDraft = false;
+function hideDraft() {
+  if (!showingDraft) return;
+  showingDraft = false;
+  film.restorePreview();
+  canvas.hidden = !personal;
+  video.hidden = personal;
+  setRatio(previewConfig?.aspect ?? "landscape");
+}
+async function showName() {
+  const cfg = editedConfig();
+  if (!cfg) { hideDraft(); return; }
+  showingDraft = true;
+  video.pause();
+  try {
+    if (!(await film.showDraft(cfg))) return;
+    setRatio(cfg.aspect);
+    video.hidden = true;
+    canvas.hidden = false;
+  } catch {
+    hideDraft();
+  }
+}
 function setDraft(next: FilmDraft) {
+  hideDraft();
   cancelPendingPreview();
   draft = next;
   settings = false;
@@ -243,6 +267,7 @@ function openPanel(advanced = false) {
 }
 function closePanel(focus: HTMLElement = edit) {
   cancelPendingPreview();
+  hideDraft();
   uploadSequence++;
   cancelUpload();
   for (const el of inerted.splice(0)) el.inert = false;
@@ -301,6 +326,7 @@ nameInput.oninput = () => {
   cancelUpload();
   names.name = nameInput.value;
   names.target = undefined;
+  void showName();
   showMessage("");
   nameInput.removeAttribute("aria-invalid");
 };
@@ -402,6 +428,7 @@ async function playDraft() {
     }
     return;
   }
+  hideDraft();
   const request = ++playRequest;
   busy = true;
   disableSubmit(true);

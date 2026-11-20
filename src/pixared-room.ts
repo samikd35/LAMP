@@ -178,7 +178,6 @@ async function makeCabinet(
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   const scene = new T.Scene();
   const width = phone ? 514 : 888;
-  const height = phone ? 393 : 636;
   const originX = phone ? 11 : 350;
   const originY = phone ? 278 : 188;
   const camera = new T.OrthographicCamera(
@@ -224,27 +223,6 @@ async function makeCabinet(
     scene.add(mesh);
     return mesh;
   }
-  const shape = new T.Shape();
-  const radius = width * 0.024;
-  shape.moveTo(radius, 0);
-  shape.lineTo(width - radius, 0);
-  shape.quadraticCurveTo(width, 0, width, -radius);
-  shape.lineTo(width, -height + radius);
-  shape.quadraticCurveTo(width, -height, width - radius, -height);
-  shape.lineTo(radius, -height);
-  shape.quadraticCurveTo(0, -height, 0, -height + radius);
-  shape.lineTo(0, -radius);
-  shape.quadraticCurveTo(0, 0, radius, 0);
-  project(
-    new T.ExtrudeGeometry(shape, {
-      depth: width * 0.035,
-      bevelEnabled: false,
-      curveSegments: 5,
-    }),
-    0,
-    0,
-    0,
-  );
   const dialX = width * (phone ? 0.903 : 0.9015);
   const dialRadius = width * (phone ? 0.053 : 0.047);
   const dials = (phone ? [0.14, 0.287] : [0.124, 0.263]).map((y) => {
@@ -257,51 +235,8 @@ async function makeCabinet(
     geo.rotateX(Math.PI / 2);
     return project(geo, dialX, width * y, width * 0.052);
   });
-  // A shallow domed glass surface carries the baked curved lip outside the live picture.
-  const glass = new T.PlaneGeometry(width * 0.704, width * 0.449, 16, 12);
-  const pts = glass.getAttribute("position");
-  for (let i = 0; i < pts.count; i++) {
-    const nx = pts.getX(i) / (width * 0.352),
-      ny = pts.getY(i) / (width * 0.2245);
-    pts.setZ(
-      i,
-      width * 0.013 * Math.max(0, 1 - nx * nx) * Math.max(0, 1 - ny * ny),
-    );
-  }
-  project(glass, width * 0.422, width * 0.322, width * 0.037);
-  // Feet and aerial use the measured silhouette ends as pivots in the same projection.
-  const rodEnds = phone
-    ? [
-        [151, 153, 232, 278],
-        [378, 154, 296, 278],
-      ]
-    : [
-        [602, 27, 737, 188],
-        [985, 27, 851, 188],
-      ];
-  for (const [x1, y1, x2, y2] of rodEnds) {
-    const dx = x2 - x1,
-      dy = y2 - y1;
-    const rod = new T.CylinderGeometry(
-      width * 0.002,
-      width * 0.003,
-      Math.hypot(dx, dy),
-      8,
-    );
-    rod.rotateZ(Math.atan2(dx, dy));
-    project(rod, (x1 + x2) / 2 - originX, (y1 + y2) / 2 - originY, 10);
-  }
-  // Render the two short, raked walnut legs behind the cabinet's lower lip.
-  for (const side of [-1, 1]) {
-    const foot = new T.CylinderGeometry(
-      width * 0.026,
-      width * 0.012,
-      width * 0.07,
-      10,
-    );
-    foot.rotateZ(-side * 0.54);
-    project(foot, width * (0.5 + side * 0.418), height + width * 0.029, 0);
-  }
+  // The room photograph supplies all stationary surfaces.
+  for (const dial of dials) dial.visible = false;
   const hinge = new T.Group();
   hinge.position.set(
     width * 0.5,
@@ -366,8 +301,10 @@ async function makeCabinet(
     frame = requestAnimationFrame(tick);
   }
   function turn(index: number, instant: boolean) {
-    if (!instant)
-      dials[index].rotation.z = dials[index].rotation.z === 0 ? -0.13 : 0;
+    if (!instant) {
+      dials[index].visible = !dials[index].visible;
+      dials[index].rotation.z = -0.13;
+    }
     draw();
   }
   draw();
