@@ -22,6 +22,8 @@ body {
   display: block;
   object-fit: contain;
 }
+.px-frame.px-full-picture { width: 100%; height: 100%; }
+.px-full-picture video { object-fit: cover; }
 .px-sheet [hidden],
 .px-frame [hidden],
 .px-keys [hidden],

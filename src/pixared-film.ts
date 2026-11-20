@@ -163,11 +163,11 @@ export function createFilm(
 
   function resize() {
     if (!scene || !configured) return;
-    const { width } = canvas.getBoundingClientRect();
+    const { width, height } = canvas.getBoundingClientRect();
     if (!width) return;
-    const [w, h] = presets[configured.aspect as keyof typeof presets];
+    const [w] = presets[configured.aspect as keyof typeof presets];
     const pixels = Math.max(1, Math.min(w, Math.round(width * Math.min(devicePixelRatio, 2))));
-    scene.resize(pixels, Math.max(1, Math.round(pixels * h / w)));
+    scene.resize(pixels, Math.max(1, Math.round(pixels * height / width)));
     scene.draw(configured === config ? time : 4.25);
   }
 
@@ -206,7 +206,7 @@ export function createFilm(
     if (order !== revision) return;
     config = next;
     time = at;
-    scene ??= studioScene(canvas);
+    scene ??= studioScene(canvas, true);
     if (configured !== next) {
       scene.configure(next);
       configured = next;
@@ -233,7 +233,7 @@ export function createFilm(
       const order = revision;
       const { studioScene } = await import("./scene");
       if (order !== revision || disposed) return false;
-      scene ??= studioScene(canvas);
+      scene ??= studioScene(canvas, true);
       scene.configure(next);
       configured = next;
       resize();

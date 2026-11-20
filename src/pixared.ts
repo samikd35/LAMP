@@ -78,11 +78,14 @@ function cancelPendingPreview() {
   busy = false;
   film.pause();
   if (!personal) canvas.hidden = true;
-  setRatio(previewConfig?.aspect ?? "landscape");
+  setRatio(previewConfig);
   disableSubmit(false);
   get(".px-sr").textContent = "";
 }
-function setRatio(aspect: string) {
+function setRatio(config?: ReturnType<typeof draftConfig>) {
+  const aspect = config?.aspect ?? "landscape";
+  frame.classList.toggle("px-full-picture", aspect === "landscape" && !config?.logo);
+  room.screen.style.backgroundColor = config?.background ?? "#94a9cf";
   frame.style.setProperty(
     "--ratio",
     String(aspect === "portrait" ? 9 / 16 : aspect === "square" ? 1 : 16 / 9),
@@ -181,7 +184,7 @@ function hideDraft() {
   film.restorePreview();
   canvas.hidden = !personal;
   video.hidden = personal;
-  setRatio(previewConfig?.aspect ?? "landscape");
+  setRatio(previewConfig);
 }
 async function showName() {
   const cfg = editedConfig();
@@ -190,7 +193,7 @@ async function showName() {
   video.pause();
   try {
     if (!(await film.showDraft(cfg))) return;
-    setRatio(cfg.aspect);
+    setRatio(cfg);
     video.hidden = true;
     canvas.hidden = false;
   } catch {
@@ -434,7 +437,7 @@ async function playDraft() {
   disableSubmit(true);
   get(".px-sr").textContent = "Opening preview…";
   try {
-    setRatio(cfg.aspect);
+    setRatio(cfg);
     canvas.hidden = false;
     video.pause();
     await film.play(cfg);
@@ -449,7 +452,7 @@ async function playDraft() {
     closePanel(transport);
   } catch (e) {
     if (request !== playRequest) return;
-    setRatio(previewConfig?.aspect ?? "landscape");
+    setRatio(previewConfig);
     if (!personal) canvas.hidden = true;
     showMessage(
       e instanceof Error ? e.message : "The preview could not start.",
@@ -510,6 +513,7 @@ prepare.onclick = () => {
 };
 newVersion.onclick = prepareCurrent;
 video.onplay = video.onpause = updateTransport;
+setRatio();
 video.src = "/pixared/ada.mp4";
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) video.pause();

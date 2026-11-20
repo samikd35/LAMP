@@ -8,7 +8,7 @@ import { makeLogoPerformance } from "./logo-performance";
 import { evaluate } from "./timeline.mjs";
 import { snapshot, presets } from "./config.mjs";
 export type Config = ReturnType<typeof snapshot>;
-export function studioScene(canvas: HTMLCanvasElement) {
+export function studioScene(canvas: HTMLCanvasElement, crt = false) {
   const renderer = new T.WebGLRenderer({
     canvas,
     antialias: true,
@@ -60,10 +60,10 @@ export function studioScene(canvas: HTMLCanvasElement) {
   const bars = new T.Mesh(
     new T.PlaneGeometry(2, 2),
     new T.ShaderMaterial({
-      uniforms: { matte: { value: 0 }, fade: { value: 0 } },
+      uniforms: { matte: { value: 0 }, showMatte: { value: crt ? 0 : 1 }, fade: { value: 0 } },
       vertexShader: wash.material.vertexShader,
       fragmentShader:
-        "varying vec2 v;uniform float matte;uniform float fade;void main(){float a=(v.y<matte||v.y>1.-matte)?1.:fade;if(a<.001)discard;gl_FragColor=vec4(0.,0.,0.,a);}",
+        "varying vec2 v;uniform float matte;uniform float showMatte;uniform float fade;void main(){float a=(v.y<matte||v.y>1.-matte)?max(showMatte,fade):fade;if(a<.001)discard;gl_FragColor=vec4(0.,0.,0.,a);}",
       depthTest: false,
       depthWrite: false,
       transparent: true,
@@ -301,6 +301,7 @@ export function studioScene(canvas: HTMLCanvasElement) {
     pool.scale.set(1.55 + reach * 0.92, 1.75 + reach * 1.13, 1);
     pool.material.uniforms.strength.value = 0.6 / (1 + y * 0.65);
   }
+  let viewportRatio = 1;
   function draw(t: number) {
     if (logoPerformance) {
       floor.material.opacity = 0.21 * logoPerformance.pose(t);
@@ -310,12 +311,13 @@ export function studioScene(canvas: HTMLCanvasElement) {
     pose(t);
     camera.left = (-span * ratio) / 2;
     camera.right = -camera.left;
-    camera.top = span / 2;
+    camera.top = (span / 2) * (crt ? Math.max(1, ratio / viewportRatio) : 1);
     camera.bottom = -camera.top;
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
   }
   function resize(w: number, h: number) {
+    viewportRatio = w / h;
     renderer.setSize(w, h, false);
   }
   function pickTarget(x: number, y: number) {

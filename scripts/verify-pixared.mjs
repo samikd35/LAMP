@@ -106,6 +106,9 @@ try {
   assert.equal(await input.inputValue(), "Ada");
   const screen = slow.getByLabel("Your film preview", { exact: true });
   await screen.waitFor();
+  const picture = await screen.boundingBox();
+  const glass = await slow.locator(".px-screen").boundingBox();
+  assert.ok(Math.abs(picture.height - glass.height) < 1 && Math.abs(picture.width - glass.width) < 1);
   const ada = await screen.screenshot();
   await input.fill("Luna");
   await slow.waitForTimeout(100);
