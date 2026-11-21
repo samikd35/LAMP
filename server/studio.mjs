@@ -157,14 +157,39 @@ const server = http.createServer(async (req, res) => {
     json(e.code === "ENOENT" ? 404 : 400, { error: e.message });
   }
 });
-server.listen(port, "127.0.0.1", () =>
-  console.log(`Lamp Name Studio: ${origin}`),
-);
-for (const sig of ["SIGINT", "SIGTERM"])
-  process.once(sig, () => {
-    for (const j of q.jobs.filter((j) =>
-      ["queued", "rendering", "encoding"].includes(j.status),
-    ))
-      q.cancel(j);
-    server.close();
-  });
+
+async function studioIsRunning() {
+  // Check both routes so a static preview of the editor does not qualify.
+  const options = { signal: AbortSignal.timeout(1500), redirect: "error" };
+  try {
+    const editor = await fetch(origin + "/studio.html", options);
+    if (!editor.ok || !(await editor.text()).includes("<title>Lamp Name Studio</title>"))
+      return false;
+    const jobs = await fetch(`${origin}/api/jobs`, options);
+    await jobs.body?.cancel();
+    return jobs.ok && jobs.headers.get("content-type") === "application/json";
+  } catch {
+    return false;
+  }
+}
+
+try {
+  await once(server.listen(port, "127.0.0.1"), "listening");
+  console.log(`Lamp Name Studio: ${origin}`);
+  for (const sig of ["SIGINT", "SIGTERM"])
+    process.once(sig, () => {
+      for (const j of q.jobs.filter((j) =>
+        ["queued", "rendering", "encoding"].includes(j.status),
+      ))
+        q.cancel(j);
+      server.close();
+    });
+} catch (error) {
+  if (error.code !== "EADDRINUSE") throw error;
+  if (process.argv.includes("--reuse") && await studioIsRunning()) {
+    console.log(`Lamp Name Studio is already running at ${origin}`);
+  } else {
+    console.error(`${origin} is already in use. Set PORT to a free port and try again.`);
+    process.exitCode = 1;
+  }
+}

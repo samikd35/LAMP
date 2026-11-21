@@ -7,8 +7,6 @@
 .DS_Store
 
 # Local environment
-.env
-.env.*
 !.env.example
 
 # Third-party reference footage and local comparison media
@@ -16,3 +14,4 @@
 /references/original-no-subtitle.mp4
 /samples/comparison.mp4
 /samples/comparison-hold.jpg
+config.bat

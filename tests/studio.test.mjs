@@ -1,11 +1,40 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { once } from "node:events";
 import { readFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { setImmediate as tick } from "node:timers/promises";
+import { promisify } from "node:util";
 import { analyze, logoRasterLimit, logoSvgLimit, snapshot } from "../src/config.mjs";
 import { evaluate, strikes } from "../src/timeline.mjs";
 import { soundtrack, sampleRate } from "../src/foley.mjs";
 import { queue } from "../server/queue.mjs";
+
+test("startup reuses a running studio and reports other port conflicts", async (t) => {
+  let serveJobs = true;
+  const listener = createServer((req, res) => {
+    if (req.url === "/api/jobs" && serveJobs) {
+      res.setHeader("Content-Type", "application/json");
+      res.end("[]");
+    } else {
+      res.end("<title>Lamp Name Studio</title>");
+    }
+  }).listen(0, "127.0.0.1");
+  t.after(() => listener.close());
+  await once(listener, "listening");
+  const { port } = listener.address();
+  const start = promisify(execFile);
+  const launch = (...args) => start(process.execPath, ["server/studio.mjs", ...args], {
+    env: { ...process.env, PORT: String(port) },
+    timeout: 5000,
+  });
+  assert.ok((await launch("--reuse")).stdout.includes(`already running at http://127.0.0.1:${port}`));
+  await assert.rejects(launch(), { code: 1, stderr: /already in use.*PORT/s });
+  serveJobs = false;
+  await assert.rejects(launch("--reuse"), { code: 1, stderr: /already in use.*PORT/s });
+});
+
 test("real glyph coverage, grapheme limits and punctuation", () => {
   for (const n of [
     "SAMUEL",

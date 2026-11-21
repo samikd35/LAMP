@@ -6,6 +6,11 @@
     calc(var(--case) * 0.21)
   );
   --panel-y: 0.593;
+  --glass-left: 6.65%;
+  --glass-width: 73.75%;
+  --flap-inset: 1.5%;
+  --flap-left: calc(var(--glass-left) + var(--flap-inset));
+  --flap-width: calc(var(--glass-width) - 2 * var(--flap-inset));
   --film-y: 0.067;
   --film-h: 0.5;
   --knob-y: 0.124;
@@ -84,7 +89,8 @@
     transform: rotate(360deg);
   }
 }
-.pixared-room[data-clock="paused"] .px-hand {
+.pixared-room[data-clock="paused"] .px-hand,
+.pixared-room[data-clock="paused"] .px-source::after {
   animation-play-state: paused;
 }
 .px-controls {
@@ -95,9 +101,9 @@
   position: absolute;
   display: grid;
   place-items: center;
-  left: 6.65%;
+  left: var(--glass-left);
   top: calc(var(--case) * var(--film-y));
-  width: 73.75%;
+  width: var(--glass-width);
   height: calc(var(--case) * var(--film-h));
   overflow: hidden;
   isolation: isolate;
@@ -124,6 +130,21 @@
   width: 20.6%;
   height: calc(var(--case) * 0.084);
   border-radius: 30px;
+}
+/* Move the photographed pin inside a fixed touch target. */
+.px-source::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/pixared-room/desktop.webp") calc(var(--case) * -1.3911) calc(var(--case) * -0.1097) / calc(var(--case) * 1.786) auto no-repeat;
+  mask-image: radial-gradient(ellipse at center, black 62%, transparent 78%);
+  transform-origin: 22% 50%;
+  animation: px-pin 4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes px-pin {
+  from { transform: rotate(-1.3deg); }
+  to { transform: rotate(1.3deg); }
 }
 .px-dial {
   left: 90.15%;
@@ -173,17 +194,20 @@
   gap: 2%;
   align-items: center;
   justify-content: space-around;
-  left: 3.5%;
+  left: var(--flap-left);
   top: calc(var(--case) * 0.605);
-  width: 93%;
+  width: var(--flap-width);
+  border: 1px solid #5c351b;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 #c09260;
   min-height: calc(var(--case) * 0.072);
 }
 /* Use the exact wood edge of the open door. Its inner surface carries native form fields. */
 .px-panel {
   position: relative;
-  width: 86%;
-  margin-inline: auto;
-  padding: clamp(11px, 1.1vw, 19px) 7.4% clamp(13px, 1.5vw, 23px);
+  width: var(--flap-width);
+  margin-left: var(--flap-left);
+  padding: clamp(11px, 1.1vw, 19px) 5% clamp(13px, 1.5vw, 23px);
   transform-origin: 50% 0;
   isolation: isolate;
   filter: drop-shadow(0 7px 5px #3018078a);
@@ -216,11 +240,13 @@
   .pixared-room {
     --case: min(calc(100vw - 16px), 560px);
     --case-height: 0.765;
-    --case-top: max(
+    --wall-above-tv: calc(var(--case) * 0.541);
+    --case-top: calc(max(
       calc((100svh - var(--case) * var(--case-height)) / 2),
-      calc(var(--case) * 0.32)
-    );
+      calc(var(--wall-above-tv) + env(safe-area-inset-top, 0px))
+    ) - 8px);
     --panel-y: 0.635;
+    --glass-left: 6.15%;
     --film-y: 0.056;
     --film-h: 0.55;
     --knob-y: 0.14;
@@ -229,16 +255,18 @@
   .px-plate {
     width: 104.87%;
     left: -2.14%;
-    top: calc(var(--case) * -0.541);
-  }
-  .px-screen {
-    left: 6.15%;
+    top: calc(0px - var(--wall-above-tv));
   }
   .px-source {
     left: 70.7%;
     top: calc(var(--case) * -0.414);
     width: 28.5%;
     height: calc(var(--case) * 0.13);
+  }
+  .px-source::after {
+    background-image: url("/pixared-room/phone.webp");
+    background-position: calc(var(--case) * -0.7284) calc(var(--case) * -0.127);
+    background-size: calc(var(--case) * 1.0487) auto;
   }
   .px-clock-mask {
     height: 42%;
@@ -250,16 +278,14 @@
     width: 1px;
   }
   .px-panel {
-    width: 86%;
-    padding: 10px 7.2% 15px;
+    padding: 10px 5% 15px;
   }
   .px-fascia {
     top: calc(var(--case) * 0.646);
-    left: 3.2%;
-    width: 93.6%;
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .px-source::after { animation: none; }
   .px-hand {
     animation-play-state: paused;
   }

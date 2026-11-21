@@ -12,8 +12,8 @@ import "./pixared.css";
 
 const room = mountRoom(document.querySelector<HTMLElement>("#app")!);
 room.screen.style.containerType = "size";
-room.screen.innerHTML = `<div class="px-frame"><video muted playsinline preload="none" poster="/pixared/ada.jpg" aria-label="Sample performance. A desk lamp lands on the d in Ada."></video><canvas hidden aria-label="Your film preview"></canvas></div>`;
-room.panel.innerHTML = `<section class="px-sheet" role="dialog" aria-modal="true" aria-labelledby="px-title" hidden>
+room.screen.innerHTML = `<div class="px-frame"><video muted playsinline preload="none" poster="/pixared/pixar.jpg" aria-label="Sample performance. A desk lamp lands on the I in PIXAR."></video><canvas hidden aria-label="Your film preview"></canvas></div>`;
+room.panel.innerHTML = `<section class="px-sheet" hidden>
   <form novalidate>
     <div class="px-head"><h1 id="px-title" tabindex="-1">Your name</h1><label class="px-motion"><input type="checkbox"> Room motion</label><button type="button" data-action="close">Close</button></div>
     <div class="px-art">
@@ -246,6 +246,9 @@ function openPanel(advanced = false) {
   if (sheet.hidden) {
     room.setOpen(true);
     sheet.hidden = false;
+    room.controls.setAttribute("role", "dialog");
+    room.controls.setAttribute("aria-modal", "true");
+    room.controls.setAttribute("aria-labelledby", "px-title");
     for (
       let el: HTMLElement | null = sheet;
       el && el !== document.body;
@@ -253,7 +256,7 @@ function openPanel(advanced = false) {
     ) {
       for (const sibling of el.parentElement?.children ?? []) {
         if (
-          sibling !== el &&
+          sibling !== el && sibling !== room.source &&
           sibling instanceof HTMLElement &&
           !sibling.inert
         ) {
@@ -275,12 +278,14 @@ function closePanel(focus: HTMLElement = edit) {
   cancelUpload();
   for (const el of inerted.splice(0)) el.inert = false;
   sheet.hidden = true;
+  for (const attr of ["role", "aria-modal", "aria-labelledby"]) room.controls.removeAttribute(attr);
   updateExport(tracker.state);
   room.setOpen(false);
   focus.focus({ preventScroll: true });
   showMessage("");
 }
-sheet.addEventListener("keydown", (e) => {
+room.controls.addEventListener("keydown", (e) => {
+  if (sheet.hidden) return;
   if (e.key === "Escape") {
     e.preventDefault();
     closePanel();
@@ -288,6 +293,7 @@ sheet.addEventListener("keydown", (e) => {
   }
   if (e.key !== "Tab") return;
   const items = [
+    room.source,
     ...sheet.querySelectorAll<HTMLElement>(
       "input:not(:disabled),button:not(:disabled),select:not(:disabled)",
     ),
@@ -513,8 +519,9 @@ prepare.onclick = () => {
 };
 newVersion.onclick = prepareCurrent;
 video.onplay = video.onpause = updateTransport;
+video.onended = () => video.load();
 setRatio();
-video.src = "/pixared/ada.mp4";
+video.src = "/pixared/pixar.mp4";
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) video.pause();
 });

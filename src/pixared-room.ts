@@ -21,6 +21,7 @@ export function mountRoom(host: HTMLElement) {
   host.append(element);
   const get = <T extends HTMLElement>(selector: string) =>
     element.querySelector<T>(selector)!;
+  const controls = get<HTMLDivElement>(".px-controls");
   const screen = get<HTMLDivElement>(".px-screen");
   const panel = get<HTMLDivElement>(".px-panel");
   const fascia = get<HTMLDivElement>(".px-fascia");
@@ -53,7 +54,7 @@ export function mountRoom(host: HTMLElement) {
     element.dataset.open = String(value);
     panel.hidden = !value;
     fascia.hidden = value;
-    for (const control of [source, landing, sound]) control.inert = value;
+    for (const control of [landing, sound]) control.inert = value;
     if (changed) {
       geometry?.fold(value, reduced.matches);
       if (value && !reduced.matches)
@@ -84,7 +85,7 @@ export function mountRoom(host: HTMLElement) {
     try {
       await plate.decode();
       if (signal.aborted || turn !== generation) return;
-      const next = await makeCabinet(replacement, plate, phone.matches);
+      const next = await makeCabinet(replacement, plate, phone.matches, panel);
       if (signal.aborted || turn !== generation) next.dispose();
       else geometry = next;
     } catch {
@@ -150,6 +151,8 @@ export function mountRoom(host: HTMLElement) {
     element.remove();
   }
   return {
+    controls,
+    source,
     screen,
     panel,
     fascia,
@@ -167,6 +170,7 @@ async function makeCabinet(
   canvas: HTMLCanvasElement,
   image: HTMLImageElement,
   phone: boolean,
+  panel: HTMLElement,
 ) {
   const T = await import("three");
   const renderer = new T.WebGLRenderer({
@@ -238,14 +242,18 @@ async function makeCabinet(
   // The room photograph supplies all stationary surfaces.
   for (const dial of dials) dial.visible = false;
   const hinge = new T.Group();
+  const layout = getComputedStyle(panel);
+  const inset = parseFloat(layout.getPropertyValue("--flap-inset"));
+  const flapWidth = width * (parseFloat(layout.getPropertyValue("--glass-width")) - 2 * inset) / 100;
+  const flapLeft = width * (parseFloat(layout.getPropertyValue("--glass-left")) + inset) / 100;
   hinge.position.set(
-    width * 0.5,
+    flapLeft + flapWidth / 2,
     -width * (phone ? 0.635 : 0.593),
     width * 0.057,
   );
   const door = new T.Mesh(
     new T.BoxGeometry(
-      width * (phone ? 0.86 : 0.84),
+      flapWidth,
       width * 0.213,
       width * 0.011,
     ),
@@ -253,13 +261,13 @@ async function makeCabinet(
   );
   door.position.y = -width * 0.1065;
   hinge.add(door);
-  for (const offset of [-0.32, 0.32]) {
+  for (const offset of [-0.365, 0.365]) {
     const cylinder = new T.Mesh(
       new T.CylinderGeometry(width * 0.005, width * 0.005, width * 0.049, 10),
       pins,
     );
     cylinder.rotation.z = Math.PI / 2;
-    cylinder.position.x = offset * width;
+    cylinder.position.x = offset * flapWidth;
     hinge.add(cylinder);
     meshes.push(cylinder);
   }

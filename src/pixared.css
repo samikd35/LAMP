@@ -58,6 +58,7 @@ body {
 .px-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: clamp(4px, 1vw, 15px);
 }
 .px-head h1 {
@@ -275,7 +276,17 @@ body {
 }
 @media (max-width: 500px) {
   .px-head {
-    gap: 5px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0;
+  }
+  .px-head button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .px-motion {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
   .px-sheet,
   .px-keys {

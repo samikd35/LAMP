@@ -14,6 +14,19 @@ try {
   assert.equal(await page.title(), "Pixared");
   const dialog = page.getByRole("dialog");
   await dialog.waitFor();
+  const pin = dialog.getByRole("link", { name: /on GitHub/ });
+  const repository = "https://github.com/samikd35/LAMP";
+  assert.equal(await pin.getAttribute("href"), repository);
+  await page.context().route(repository, route => route.fulfill({ body: "Repository" }));
+  const opened = page.waitForEvent("popup");
+  await pin.click();
+  const repoTab = await opened;
+  await repoTab.waitForURL(repository);
+  await repoTab.close();
+  assert.equal(await pin.evaluate(el => getComputedStyle(el, "::after").animationName), "none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.waitForFunction(() => getComputedStyle(document.querySelector(".px-source"), "::after").animationPlayState === "running");
+  await page.emulateMedia({ reducedMotion: "reduce" });
   assert(
     await dialog.getByRole("button", { name: "Upload a logo" }).isVisible(),
   );
@@ -30,17 +43,33 @@ try {
       );
     });
   }
+  async function assertUnderGlass(selector) {
+    const glass = await page.locator(".px-screen").boundingBox();
+    const flap = await page.locator(selector).boundingBox();
+    assert.ok(flap.width < glass.width);
+    assert.ok(Math.abs(flap.x + flap.width / 2 - glass.x - glass.width / 2) < 1);
+  }
   for (const [label, width, height] of [
     ["desktop", 1280, 800],
     ["phone", 360, 640],
   ]) {
     await page.setViewportSize({ width, height });
     await settleRoom();
+    await assertUnderGlass(".px-panel");
     await page.screenshot({ path: `outputs/pixared/${label}-first-visit.png` });
     assert(
       await dialog.getByRole("heading", { name: "Your name" }).isVisible(),
     );
   }
+  for (const [width, height] of [[320, 568], [390, 620], [430, 640], [600, 700]]) {
+    await page.setViewportSize({ width, height });
+    await settleRoom();
+    const plate = await page.locator(".px-plate").boundingBox();
+    // The pennant starts below the blank top margin of the 539px-wide plate.
+    assert.ok(plate.y + plate.width * 40 / 539 >= 8, `Mobile pennant clipped at ${width}×${height}`);
+  }
+  await page.setViewportSize({ width: 360, height: 640 });
+  await settleRoom();
   // Focusing the field hydrates the cabinet. Its photographed tuner must stay visible.
   const tuner = page.locator(".px-landing");
   const beforeFocus = await tuner.screenshot();
@@ -72,6 +101,7 @@ try {
   ]) {
     await page.setViewportSize({ width, height });
     await settleRoom();
+    await assertUnderGlass(".px-fascia");
     await page.screenshot({ path: `outputs/pixared/${label}-playback.png` });
   }
   await page.getByRole("button", { name: "Edit", exact: true }).click();
